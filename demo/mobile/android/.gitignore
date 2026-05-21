@@ -1,0 +1,16 @@
+*.iml
+.gradle/
+build/
+local.properties
+.idea/
+captures/
+.cxx/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# Asset'ler — modeller repo'da models/ altında zaten var; build sırasında
+# kopyalanacaklar.
+app/src/main/assets/models/*.tflite
+app/src/main/assets/models/*.task

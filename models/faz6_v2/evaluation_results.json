@@ -1,0 +1,154 @@
+{
+  "num_classes": 100,
+  "test_size": 201,
+  "ensemble": {
+    "num_models": 5,
+    "top1_acc": 56.22,
+    "top5_acc": 81.09,
+    "macro_f1": 0.5208,
+    "weighted_f1": 0.5407,
+    "individual_models": [
+      {
+        "ckpt": "best_lstm_seed0.pth",
+        "top1": 53.23,
+        "top5": 80.6,
+        "macro_f1": 0.4905
+      },
+      {
+        "ckpt": "best_lstm_seed1.pth",
+        "top1": 52.74,
+        "top5": 78.11,
+        "macro_f1": 0.4951
+      },
+      {
+        "ckpt": "best_lstm_seed2.pth",
+        "top1": 56.22,
+        "top5": 79.1,
+        "macro_f1": 0.5238
+      },
+      {
+        "ckpt": "best_lstm_seed3.pth",
+        "top1": 49.75,
+        "top5": 77.61,
+        "macro_f1": 0.447
+      },
+      {
+        "ckpt": "best_lstm_seed4.pth",
+        "top1": 48.76,
+        "top5": 79.6,
+        "macro_f1": 0.4686
+      }
+    ],
+    "top_confusions": [
+      {
+        "true": "black",
+        "pred": "who",
+        "count": 2
+      },
+      {
+        "true": "dog",
+        "pred": "later",
+        "count": 2
+      },
+      {
+        "true": "change",
+        "pred": "how",
+        "count": 2
+      },
+      {
+        "true": "want",
+        "pred": "many",
+        "count": 2
+      },
+      {
+        "true": "mother",
+        "pred": "fine",
+        "count": 1
+      },
+      {
+        "true": "go",
+        "pred": "play",
+        "count": 1
+      },
+      {
+        "true": "who",
+        "pred": "hearing",
+        "count": 1
+      },
+      {
+        "true": "candy",
+        "pred": "hearing",
+        "count": 1
+      },
+      {
+        "true": "candy",
+        "pred": "apple",
+        "count": 1
+      },
+      {
+        "true": "thin",
+        "pred": "wrong",
+        "count": 1
+      },
+      {
+        "true": "thin",
+        "pred": "woman",
+        "count": 1
+      },
+      {
+        "true": "yes",
+        "pred": "no",
+        "count": 1
+      },
+      {
+        "true": "cool",
+        "pred": "apple",
+        "count": 1
+      },
+      {
+        "true": "cool",
+        "pred": "chair",
+        "count": 1
+      },
+      {
+        "true": "cool",
+        "pred": "brown",
+        "count": 1
+      },
+      {
+        "true": "like",
+        "pred": "short",
+        "count": 1
+      },
+      {
+        "true": "deaf",
+        "pred": "bird",
+        "count": 1
+      },
+      {
+        "true": "deaf",
+        "pred": "corn",
+        "count": 1
+      },
+      {
+        "true": "no",
+        "pred": "deaf",
+        "count": 1
+      },
+      {
+        "true": "orange",
+        "pred": "drink",
+        "count": 1
+      }
+    ]
+  },
+  "single": {
+    "top1_acc": 48.76,
+    "top5_acc": 77.61,
+    "macro_f1": 0.4458,
+    "weighted_f1": 0.4513,
+    "model_size_mb": 5.514,
+    "inference_fps": 534.4,
+    "inference_ms_per_sample": 1.871
+  }
+}

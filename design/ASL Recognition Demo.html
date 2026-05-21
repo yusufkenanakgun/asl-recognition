@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ASL Recognition Demo — Mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html, body {
+    margin: 0; padding: 0;
+    font-family: 'Roboto', system-ui, sans-serif;
+    background: #FAFAFA;
+    color: #101418;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  * { box-sizing: border-box; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="screens.jsx"></script>
+<script type="text/babel">
+const { DesignCanvas, DCSection, DCArtboard } = window;
+
+function App() {
+  // phone outer dims: 412 + 20 (border) = 432, 892 + 20 = 912
+  const W = 432, H = 912;
+  return (
+    <DesignCanvas title="ASL Recognition Demo" subtitle="CSE492 thesis prototype — Android Material 3 mockups">
+      <DCSection id="main" title="Main flow">
+        <DCArtboard id="home" label="Home" width={W} height={H}>
+          <HomeScreen />
+        </DCArtboard>
+        <DCArtboard id="letters" label="Letters tab" width={W} height={H}>
+          <LettersScreen />
+        </DCArtboard>
+        <DCArtboard id="words" label="Words tab" width={W} height={H}>
+          <WordsScreen />
+        </DCArtboard>
+      </DCSection>
+      <DCSection id="states" title="States & variants">
+        <DCArtboard id="letters-empty" label="Letters — no hand detected" width={W} height={H}>
+          <LettersScreen noHand />
+        </DCArtboard>
+        <DCArtboard id="permission" label="Camera permission denied" width={W} height={H}>
+          <PermissionScreen />
+        </DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

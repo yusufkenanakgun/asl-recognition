@@ -129,16 +129,15 @@ Tüm sonuçlar tablolar ve grafiklerle belgelenir.
 
 ## FAZ 7: Demo Uygulama (1-2 Hafta)
 
-### Seçenek 1: Python + OpenCV Webcam Demo (Öncelikli)
+### Mobil Demo (Android + TensorFlow Lite) — Proposal yöntemi
 
-- Kamera açılır, el görüntüsü alınır
-- Eğitilmiş model ile inference yapılır
-- Tanınan harf/kelime ekranda gösterilir
+Proposal'da demo uygulaması **mobil (Android/iOS) + React Native + TensorFlow Lite** olarak tanımlanmıştır. Bu faz aynen bu kapsamda yürütülür; PC/web tabanlı bir demo proposal kapsamında değildir.
 
-### Seçenek 2: React Native Mobil Demo (Vakit kalırsa)
-
-- TensorFlow Lite'a dönüştürülmüş model ile mobil inference
-- Kamera erişimi ve gerçek zamanlı tanıma
+- PyTorch → ONNX → TFLite dönüşüm pipeline'ı (önce MLP, sonra EfficientNet, sonra LSTM)
+- Mobil cihaz kamerası erişimi + MediaPipe Tasks (Android) ile el landmark çıkarımı
+- TFLite üzerinden cihaz-üstü (on-device) inference
+- Tanınan harf/kelime ekrana yazılır; FPS ve latency ölçülür
+- Stack tercihi: bare React Native + `react-native-fast-tflite` + `react-native-vision-camera`. RN ekosistem riski engelse fallback **native Android (Kotlin + TFLite + MediaPipe Tasks Android SDK)**.
 
 > **Sunum İpucu:** Canlı demo gösterimi çok etkili olur. Backup olarak mutlaka bir demo videosu kaydedilmeli.
 

@@ -1,0 +1,139 @@
+% =============================================================================
+% Preamble - tüm paket importları, sayfa düzeni, font, başlık stilleri
+% =============================================================================
+
+% --- Encoding & language --------------------------------------------------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+
+% --- Page geometry --------------------------------------------------------
+% A4, 3.5 cm sol cilt payı, 2.5 cm diğer kenarlar
+\usepackage[
+  a4paper,
+  top=2.5cm,
+  bottom=2.5cm,
+  left=3.5cm,
+  right=2.5cm,
+  headheight=14.5pt,
+  headsep=0.7cm,
+  footskip=1.0cm,
+]{geometry}
+
+% --- Math packages (must load BEFORE newtxmath to avoid \Bbbk clash) ------
+\usepackage{amsmath, amssymb, amsthm}
+
+% --- Fonts (Times New Roman benzeri) --------------------------------------
+\usepackage{newtxtext}     % gövde metni
+\usepackage{newtxmath}     % matematik fontu (uyumlu, amssymb'den sonra)
+\usepackage{microtype}     % blok hizalamada profesyonel görünüm
+
+% --- Line spacing ---------------------------------------------------------
+\usepackage{setspace}
+\onehalfspacing            % 1.5 satır aralığı (akademik tez standardı)
+
+% --- Paragraph style ------------------------------------------------------
+\setlength{\parindent}{1.27cm}   % ilk satır girintisi (Word default)
+\setlength{\parskip}{0pt}        % paragraflar arası ekstra boşluk yok
+
+% --- Units & symbols ------------------------------------------------------
+\usepackage{siunitx}
+\sisetup{
+  detect-all,
+  group-separator={,},
+  group-minimum-digits=4,
+}
+
+% --- Graphics & figures ---------------------------------------------------
+\usepackage{graphicx}
+\graphicspath{{figures/}}
+\usepackage{float}         % [H] placement
+\usepackage{subcaption}    % alt-figürler
+
+% --- Tables ---------------------------------------------------------------
+\usepackage{booktabs}      % toprule/midrule/bottomrule
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{longtable}     % sayfa kıran tablolar
+
+% --- Captions -------------------------------------------------------------
+\usepackage[
+  font=small,
+  labelfont=bf,
+  labelsep=period,
+  justification=centering,
+]{caption}
+
+% --- Colors & code listings -----------------------------------------------
+\usepackage{xcolor}
+\definecolor{codegray}{rgb}{0.95,0.95,0.95}
+\definecolor{codeblue}{rgb}{0.0,0.2,0.6}
+\definecolor{codegreen}{rgb}{0.0,0.5,0.0}
+
+% --- Algorithms (pseudo-code) ---------------------------------------------
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% --- Headers & footers ----------------------------------------------------
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\nouppercase{\leftmark}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% Chapter ilk sayfasında "plain" stil — sadece sayfa numarası
+\fancypagestyle{plain}{%
+  \fancyhf{}
+  \fancyfoot[C]{\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+% --- Chapter title style (sade, profesyonel) ------------------------------
+\usepackage{titlesec}
+\titleformat{\chapter}[display]
+  {\normalfont\Large\bfseries}
+  {\chaptertitlename\ \thechapter}
+  {12pt}
+  {\LARGE}
+\titlespacing*{\chapter}{0pt}{-20pt}{20pt}
+
+% --- TOC / LOF / LOT formatting -------------------------------------------
+\usepackage{tocloft}
+\renewcommand{\cftchapfont}{\bfseries}
+\renewcommand{\cftchappagefont}{\bfseries}
+\setlength{\cftbeforechapskip}{6pt}
+
+% --- Bibliography (IEEE style) --------------------------------------------
+\usepackage{csquotes}
+\usepackage[
+  backend=biber,
+  style=ieee,
+  sorting=none,
+  maxbibnames=99,
+]{biblatex}
+\addbibresource{references.bib}
+
+% --- Hyperlinks (en sonda olmalı) -----------------------------------------
+\usepackage[
+  colorlinks=true,
+  linkcolor=black,
+  citecolor=black,
+  urlcolor=blue!60!black,
+  pdfborder={0 0 0},
+  bookmarksnumbered=true,
+]{hyperref}
+\usepackage[capitalize,noabbrev]{cleveref}
+
+% --- Custom commands ------------------------------------------------------
+\newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
+\newcommand{\thesistitle}{AI-Powered Sign Language Recognition System: A Comparative Study of Image-Based and Landmark-Based Approaches}
+\newcommand{\thesisauthor}{Yusuf Kenan Akg\"un}
+\newcommand{\thesisid}{20210702010}
+\newcommand{\thesisadvisor}{[Advisor Name]}
+\newcommand{\thesisyear}{2026}
+\newcommand{\thesisdepartment}{Department of Computer Engineering}
+\newcommand{\thesisuniversity}{Yeditepe University}
+\newcommand{\thesisfaculty}{Faculty of Engineering}

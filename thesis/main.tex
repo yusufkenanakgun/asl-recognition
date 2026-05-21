@@ -1,0 +1,56 @@
+% =============================================================================
+% AI-Powered Sign Language Recognition System
+% A Comparative Study of Image-Based and Landmark-Based Approaches
+%
+% Author: Yusuf Kenan Akgun (20210702010)
+% Yeditepe University, Department of Computer Engineering
+% CSE492 - Engineering Project, 2026
+%
+% Compile with:  pdflatex main && biber main && pdflatex main && pdflatex main
+% (or: latexmk -pdf main.tex)
+% =============================================================================
+
+\documentclass[12pt,a4paper,oneside]{report}
+
+\input{preamble.tex}
+
+\begin{document}
+
+% --- Front matter (Roman page numbers) ------------------------------------
+\pagenumbering{roman}
+
+\input{titlepage.tex}
+
+\input{chapters/00_acknowledgements.tex}
+\clearpage
+
+\input{chapters/00_abstract.tex}
+\clearpage
+
+\input{chapters/00_ozet.tex}
+\clearpage
+
+\tableofcontents
+\clearpage
+
+\listoffigures
+\clearpage
+
+\listoftables
+\clearpage
+
+% --- Main matter (Arabic page numbers) ------------------------------------
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+\input{chapters/01_introduction.tex}
+\input{chapters/02_related_work.tex}
+\input{chapters/03_analysis_design.tex}
+\input{chapters/04_implementation.tex}
+\input{chapters/05_test_results.tex}
+\input{chapters/06_conclusion.tex}
+
+% --- Back matter ----------------------------------------------------------
+\printbibliography[heading=bibintoc, title={Bibliography}]
+
+\end{document}

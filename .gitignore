@@ -1,39 +1,114 @@
-# Veri setleri (boyutu büyük, repo'ya eklenmemeli)
+# =============================================================================
+# DATA & MODELS
+# =============================================================================
+
+# Ham veri setleri (boyut nedeniyle repo dışı)
 data/
 
-# Eğitilmiş modeller (boyutu büyük)
-models/*.pt
+# Eğitim checkpoint'leri (büyük; deployment ile değiştirildi)
 models/*.pth
+models/*.pt
 models/*.h5
-models/*.tflite
+models/faz6_v2/*.pth
+# Deployment-ready küçük modelleri ve TFLite'ları HARİÇ TUT (Android demo için lazım)
+!models/deploy/*.pth
+!models/tflite/*.tflite
 
-# Python cache
+# MediaPipe Google modelleri (download script ile çekilir)
+models/*.task
+
+# =============================================================================
+# PYTHON
+# =============================================================================
 __pycache__/
 *.py[cod]
 *.pyo
+*.so
 .Python
+*.egg-info/
+.eggs/
+build/
+dist/
 
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints/
-
-# Sanal ortam
+# Sanal ortamlar
 venv/
 env/
 .venv/
+.env
 
-# IDE ayarları
+# Jupyter
+.ipynb_checkpoints/
+
+# =============================================================================
+# LATEX (thesis/.gitignore'da da var; tekrar burada güvenlik için)
+# =============================================================================
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.log
+*.out
+*.run.xml
+*.toc
+*.lof
+*.lot
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+thesis/*.pdf
+
+# =============================================================================
+# ANDROID / GRADLE
+# =============================================================================
+demo/mobile/android/.gradle/
+demo/mobile/android/build/
+demo/mobile/android/app/build/
+demo/mobile/android/local.properties
+demo/mobile/android/captures/
+demo/mobile/android/.idea/
+demo/mobile/android/*.iml
+demo/mobile/android/app/*.iml
+demo/mobile/android/.cxx/
+*.apk
+*.aab
+*.keystore
+!debug.keystore
+
+# =============================================================================
+# IDE / EDITOR
+# =============================================================================
 .vscode/
 .idea/
+.claude/
 *.swp
+*.swo
+*.iml
 
-# OS dosyaları
+# =============================================================================
+# OS
+# =============================================================================
 .DS_Store
 Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
 
-# Log dosyaları
+# =============================================================================
+# TEMP / PERSONAL
+# =============================================================================
 *.log
 logs/
-
-# Geçici dosyalar
 *.tmp
 *.temp
+*.bak
+halil_tez.txt
+_proposal.txt
+plan-yeri.txt
+ornek-tez/
+
+# =============================================================================
+# Compressed archives (boyut)
+# =============================================================================
+*.zip
+*.tar.gz
+*.7z
+!design/*.zip

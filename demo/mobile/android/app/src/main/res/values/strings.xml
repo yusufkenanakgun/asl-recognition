@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ASL Recognition Demo</string>
+
+    <!-- Home -->
+    <string name="home_title">ASL Recognition Demo</string>
+    <string name="home_headline">Real-time American Sign Language Recognition</string>
+    <string name="home_subtitle">On-device inference for static letters and dynamic word-level signs, compared across image-based and landmark-based approaches.</string>
+    <string name="home_action_letters_title">Recognize Letters</string>
+    <string name="home_action_letters_caption">A–Z, del, nothing, space (29 classes)</string>
+    <string name="home_action_words_title">Recognize Words</string>
+    <string name="home_action_words_caption">100 ASL word-level signs (WLASL-100)</string>
+    <string name="home_about_title">About this project</string>
+    <string name="home_about_project">CSE492 Engineering Project</string>
+    <string name="home_about_summary">AI-Powered Sign Language Recognition System: A Comparative Study of Image-Based and Landmark-Based Approaches</string>
+    <string name="home_about_author">Yusuf Kenan Akgün</string>
+    <string name="home_about_institution">Yeditepe University</string>
+    <string name="home_about_year">2026</string>
+    <string name="home_about_github">github.com/ykakgun/asl-recognition</string>
+    <string name="home_models_title">Models</string>
+    <string name="home_datasets_footer">Datasets · ASL Alphabet · WLASL-100</string>
+
+    <string name="label_project">Project</string>
+    <string name="label_author">Author</string>
+    <string name="label_institution">Institution</string>
+    <string name="label_year">Year</string>
+
+    <!-- Tabs -->
+    <string name="tab_home">Home</string>
+    <string name="tab_letters">Letters</string>
+    <string name="tab_words">Words</string>
+
+    <!-- Camera permission -->
+    <string name="permission_title">Camera access is required</string>
+    <string name="permission_body">This demo runs entirely on-device. Frames are processed locally and never leave your phone.</string>
+    <string name="permission_grant">Grant permission</string>
+
+    <!-- Camera UI -->
+    <string name="no_hand_title">Show your hand to the camera</string>
+    <string name="no_hand_subtitle">Waiting for landmarks…</string>
+
+    <!-- Words tab -->
+    <string name="words_collecting_title">Collecting frames…</string>
+    <string name="words_collecting_subtitle">Sign continuously for ~1 second</string>
+</resources>

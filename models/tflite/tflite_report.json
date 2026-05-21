@@ -1,0 +1,104 @@
+[
+  {
+    "name": "lstm_single_best",
+    "out": "models\\tflite\\lstm_single_best.tflite",
+    "onnx_mb": 5.522,
+    "tflite_mb": 5.562,
+    "status": "OK",
+    "sanity": {
+      "ok": true,
+      "backend": "ai_edge_litert",
+      "max_abs_diff": 1.9073486328125e-06,
+      "within_tolerance": true,
+      "torch_top1": 35,
+      "tflite_top1": 35,
+      "top1_match": true
+    },
+    "seconds": 12.64
+  },
+  {
+    "name": "lstm_seed0",
+    "out": "models\\tflite\\lstm_seed0.tflite",
+    "onnx_mb": 5.522,
+    "tflite_mb": 5.562,
+    "status": "OK",
+    "sanity": {
+      "ok": true,
+      "backend": "ai_edge_litert",
+      "max_abs_diff": 1.1920928955078125e-06,
+      "within_tolerance": true,
+      "torch_top1": 67,
+      "tflite_top1": 67,
+      "top1_match": true
+    },
+    "seconds": 7.48
+  },
+  {
+    "name": "lstm_seed1",
+    "out": "models\\tflite\\lstm_seed1.tflite",
+    "onnx_mb": 5.522,
+    "tflite_mb": 5.562,
+    "status": "OK",
+    "sanity": {
+      "ok": true,
+      "backend": "ai_edge_litert",
+      "max_abs_diff": 1.1920928955078125e-06,
+      "within_tolerance": true,
+      "torch_top1": 14,
+      "tflite_top1": 14,
+      "top1_match": true
+    },
+    "seconds": 7.49
+  },
+  {
+    "name": "lstm_seed2",
+    "out": "models\\tflite\\lstm_seed2.tflite",
+    "onnx_mb": 5.522,
+    "tflite_mb": 5.563,
+    "status": "OK",
+    "sanity": {
+      "ok": true,
+      "backend": "ai_edge_litert",
+      "max_abs_diff": 1.1920928955078125e-06,
+      "within_tolerance": true,
+      "torch_top1": 22,
+      "tflite_top1": 22,
+      "top1_match": true
+    },
+    "seconds": 7.57
+  },
+  {
+    "name": "lstm_seed3",
+    "out": "models\\tflite\\lstm_seed3.tflite",
+    "onnx_mb": 5.522,
+    "tflite_mb": 5.563,
+    "status": "OK",
+    "sanity": {
+      "ok": true,
+      "backend": "ai_edge_litert",
+      "max_abs_diff": 1.430511474609375e-06,
+      "within_tolerance": true,
+      "torch_top1": 58,
+      "tflite_top1": 58,
+      "top1_match": true
+    },
+    "seconds": 7.54
+  },
+  {
+    "name": "lstm_seed4",
+    "out": "models\\tflite\\lstm_seed4.tflite",
+    "onnx_mb": 5.522,
+    "tflite_mb": 5.563,
+    "status": "OK",
+    "sanity": {
+      "ok": true,
+      "backend": "ai_edge_litert",
+      "max_abs_diff": 1.430511474609375e-06,
+      "within_tolerance": true,
+      "torch_top1": 24,
+      "tflite_top1": 24,
+      "top1_match": true
+    },
+    "seconds": 7.46
+  }
+]

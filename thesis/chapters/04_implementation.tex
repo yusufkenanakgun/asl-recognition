@@ -1,0 +1,623 @@
+\chapter{Implementation}
+\label{ch:implementation}
+
+This chapter documents how the design presented in
+Chapter~\ref{ch:analysis-design} was translated into a working system. It
+covers the development environment, the two datasets used for the letter and
+word recognition tasks, the three classification models that were trained,
+and the Android demonstration application that hosts all of them on a single
+device. Hyperparameters, library versions and dataset statistics are reported
+in tables so that the experiments described in
+Chapter~\ref{ch:test-results} are fully reproducible.
+
+%==============================================================================
+\section{Development Environment}
+\label{sec:impl-environment}
+
+Model development and training were carried out on a single laptop running
+Windows~11 with an NVIDIA GeForce RTX~3050 Laptop GPU (4~GB VRAM) and CUDA
+toolkit 12.4. The 4~GB VRAM budget was the most binding hardware constraint
+of the project: it ruled out larger architectures such as EfficientNet-B3 or
+I3D pretrained on Kinetics, and it forced the word model to operate on
+precomputed hand landmarks rather than on raw video frames. The same
+constraint shaped the deployment target, an off-the-shelf mid-range Android
+phone with no dedicated AI accelerator.
+
+The training pipeline is implemented entirely in Python 3.10 inside a virtual
+environment. PyTorch~2.6 with the CUDA~12.4 build provides the model and
+optimizer code, \texttt{torchvision}~0.21 supplies the EfficientNet-B0
+backbone with its ImageNet weights, and Google's MediaPipe~0.10.32 handles
+hand-landmark extraction. OpenCV~4.13 is used to decode video files and to
+read frames from the webcam during preliminary tests. NumPy and scikit-learn
+cover array handling and metric computation, while Matplotlib and Seaborn
+generate the confusion matrices and learning curves reported in
+Chapter~\ref{ch:test-results}.
+
+The Android application uses a separate but matched stack. The user interface
+is written in Kotlin with Jetpack Compose (Material~3), the camera pipeline
+is built on CameraX, and hand-landmark inference is delegated to the
+MediaPipe Tasks~\textit{HandLandmarker} component in
+\textsc{live\_stream} mode. The four classification models are converted to
+TensorFlow~Lite and executed through the
+\texttt{org.tensorflow:tensorflow-lite} runtime, with the XNNPACK delegate
+enabled where applicable. Keeping the training stack in PyTorch and the
+deployment stack in TFLite reflects a deliberate split: PyTorch offers the
+research conveniences (mixed-precision, eager debugging, rich data tooling),
+whereas TFLite is the more mature option for mobile inference on Android.
+Table~\ref{tab:impl-environment} summarizes the versions used throughout the
+project.
+
+\begin{table}[h]
+\centering
+\caption{Software stack used for training and deployment.}
+\label{tab:impl-environment}
+\begin{tabular}{lll}
+\toprule
+\textbf{Layer} & \textbf{Component} & \textbf{Version} \\
+\midrule
+Training OS         & Windows                 & 11 (build 26200) \\
+GPU runtime         & CUDA                    & 12.4 \\
+Training framework  & PyTorch                 & 2.6.0 + cu124 \\
+Pretrained models   & torchvision             & 0.21.0 + cu124 \\
+Landmark extraction & MediaPipe (Python)      & 0.10.32 \\
+Video I/O           & OpenCV                  & 4.13 \\
+Numerics            & NumPy                   & 2.4 \\
+Metrics             & scikit-learn            & 1.4 \\
+\midrule
+Mobile language     & Kotlin                  & 1.9 \\
+Mobile UI           & Jetpack Compose / M3    & 2025.x BOM \\
+Camera              & CameraX                 & 1.3 \\
+On-device landmarks & MediaPipe Tasks         & 0.10 \\
+On-device inference & TensorFlow Lite (XNNPACK) & 2.16 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All training runs were repeatable on a single machine within the time budget
+of an academic semester: the longest pipeline, the five-seed BiLSTM ensemble,
+trains in under ten minutes once the landmark cache is built. Per-model
+training times are reported alongside the corresponding model in
+Sections~\ref{sec:impl-efficientnet}--\ref{sec:impl-lstm}.
+
+%==============================================================================
+\section{Dataset Preparation}
+\label{sec:impl-data}
+
+Two public datasets back the two recognition tasks. The letter task uses the
+ASL Alphabet image dataset, which provides clean, frame-level supervision for
+the 24 static hand-shapes of American Sign Language. The word task uses a
+100-class subset of WLASL, a video-level dataset whose label noise and
+collection heterogeneity are well documented in the literature. Both
+datasets are described below together with the preprocessing pipelines that
+turn them into training-ready tensors.
+
+\subsection{ASL Alphabet (Letter Task)}
+\label{sec:impl-data-asl}
+
+The ASL Alphabet dataset hosted on Kaggle contains
+\num{87000}~RGB images at 200$\times$200 pixels, equally distributed across
+29 classes: the 26 English letters plus three auxiliary classes
+(\texttt{del}, \texttt{nothing}, \texttt{space}). Each class therefore
+contributes exactly \num{3000} samples, which makes the dataset effectively
+balanced. The letters \textit{J} and \textit{Z} are present even though they
+involve motion in real ASL; in this dataset they are captured as static
+poses, and the system treats them as such.
+
+A stratified 70/15/15 split was applied to the dataset, producing
+\num{60900}~training, \num{13050}~validation and \num{13050}~test images
+while preserving the original class proportions. During training, mild
+augmentation is applied online: horizontal flipping with probability
+\num{0.3} to account for left- and right-handed signers, rotations up to
+\(\pm 15^{\circ}\), and \texttt{ColorJitter} on brightness and contrast.
+Images are resized to 224$\times$224 to match the input resolution expected
+by EfficientNet-B0 and normalized with the standard ImageNet statistics.
+Validation and test pipelines share the same resize-and-normalize steps but
+omit augmentation. For the landmark-based letter model, MediaPipe is applied
+once per image and a 63-dimensional vector of joint coordinates is cached
+on disk; details of this stage are given in Section~\ref{sec:impl-landmark}.
+
+\subsection{WLASL-100 (Word Task)}
+\label{sec:impl-data-wlasl}
+
+The Word-Level American Sign Language (WLASL) dataset~\cite{li2020wlasl}
+links each ASL gloss to one or more short YouTube and dictionary-website
+clips. The full WLASL2000 release contains roughly \num{21000} videos
+across \num{2000} glosses; only the WLASL-100 subset is used in this
+project. WLASL-100 keeps the 100 most populous classes and is the canonical
+benchmark for compact word recognizers.
+
+Reassembling WLASL-100 in 2026 required more effort than a typical
+``download-and-extract'' workflow. Of the eleven source platforms listed in
+the original metadata, six were no longer accessible: YouTube videos in
+several glosses had been removed, the Flash-based clips from one dictionary
+host were unplayable on modern browsers, and one private collection was
+unreachable. Two complementary recovery paths were used. First, a
+preprocessed Kaggle bundle of WLASL2000 was filtered down to the 100 target
+classes; this provided the bulk of clean clips. Second, the
+\texttt{url} field in the official WLASL metadata was scraped to retrieve
+\num{448} additional videos directly from institutional ASL dictionary
+sites (\textsc{aslu}, \textsc{asl5200}, \textsc{valencia-asl},
+\textsc{northtexas}), which preserved their content. After deduplication,
+\num{1465} videos were retained, a 44\% increase over the
+\num{1013}-video baseline that was available at the start of FAZ~6. Per-class
+training counts rose from an average of 7.5 to 10.2 videos.
+
+For each video the metadata specifies a sign-active frame window
+(\texttt{frame\_start}, \texttt{frame\_end}). The pipeline crops to this
+window and then samples 32 frames uniformly along the time axis using
+\texttt{np.linspace}; this fixes the temporal resolution regardless of the
+original clip length and avoids learning the trivial cue of clip duration.
+Each frame is then passed through the MediaPipe \textit{HandLandmarker}
+configured with \texttt{num\_hands=2} so that both hands of two-handed signs
+can be recovered. The landmark cache is stored once per dataset version and
+reused across all training runs.
+
+Two limitations of the recovered dataset are acknowledged here and
+revisited in the discussion of Chapter~\ref{ch:test-results}. First, the
+remaining sources skew towards dictionary-style content recorded by
+professional signers, which under-represents informal everyday signing.
+Second, the official WLASL split is person-mixed, so the same signer can
+appear in both the training and the test partitions; a stricter
+signer-disjoint evaluation is listed as future work in
+Chapter~\ref{ch:conclusion}.
+
+\subsection{Landmark Extraction and Feature Encoding}
+\label{sec:impl-landmark}
+
+The landmark-based models do not consume raw pixels at training time. Both
+the MLP letter classifier and the BiLSTM word classifier work on the
+21~3D joint coordinates produced by MediaPipe Hands, which is run once over
+the entire dataset as an offline preprocessing pass. Caching landmarks rather
+than re-extracting them per epoch keeps GPU utilization high during training
+and matches the on-device pipeline, where the mobile application also
+receives landmarks from the MediaPipe Tasks component before invoking the
+classifier.
+
+For the letter task, MediaPipe is asked for the dominant hand only and the
+output is flattened into a single 63-dimensional vector
+(\(21\) joints \(\times\) \(3\) coordinates). For the word task the
+representation is richer. Both hands are extracted, each is normalized
+independently so that the wrist sits at the origin and the distance between
+the wrist and the middle-finger MCP joint serves as the unit of length, and
+the two hands are routed into fixed ``left'' and ``right'' channels using the
+handedness label returned by MediaPipe. A presence flag
+\(p \in \{0, 1\}\) is prepended to each hand's channel: if MediaPipe fails
+to detect a hand on a particular frame, the channel is zero-filled and its
+flag drops to zero. The resulting per-frame feature vector has
+\(2 \times (1 + 21 \times 3) = 128\) dimensions, and the per-video tensor has
+the shape \((32, 128)\).
+
+Two design choices in this pipeline are worth flagging because they directly
+affect the comparison reported in Chapter~\ref{ch:test-results}. First,
+using a presence flag instead of a sentinel value lets the LSTM learn an
+explicit ``no information here'' signal rather than confusing zero
+coordinates with valid positions near the origin. Second, the wrist-relative
+normalization removes most of the signer-to-camera distance variance and is
+the lightweight stand-in for the body-pose features that a larger
+multi-stream model would otherwise rely on.
+
+%==============================================================================
+\section{Image-Based Model: EfficientNet-B0}
+\label{sec:impl-efficientnet}
+
+The first letter classifier is a standard image-classification pipeline:
+EfficientNet-B0~\cite{tan2019efficientnet} pretrained on ImageNet, with its
+final classification head replaced by a single fully connected layer that
+maps the 1280-dimensional feature embedding to the 29 ASL Alphabet classes.
+EfficientNet-B0 was chosen because it offers the best size-versus-accuracy
+ratio in its family on commodity hardware: roughly 5.3M parameters,
+a 224$\times$224 input resolution that matches the dataset's native aspect
+ratio, and a strong ImageNet baseline that transfers well to fine-grained
+hand-shape classification.
+
+Training was carried out in two stages, in line with the standard transfer
+learning recipe. In the first stage the convolutional backbone was frozen
+and only the new classification head was trained for 5~epochs with Adam at
+a learning rate of \num{1e-3}. This warm-start step gave the new head time
+to align with the pretrained feature space before any backbone weights were
+allowed to move. In the second stage all layers were unfrozen and the
+network was fine-tuned end-to-end. The fine-tuning stage used the same
+optimizer and learning rate; early stopping on validation accuracy halted
+training after 6~epochs. The two-stage protocol was a pragmatic choice:
+on the available hardware, fine-tuning the backbone immediately from the
+ImageNet weights produced unstable gradients during the first epoch, while
+the warm-started variant trained smoothly and reached its plateau within a
+handful of epochs.
+
+Cross-entropy was used as the loss function, with a batch size of 32 to
+fit the 4~GB GPU memory budget alongside the ImageNet-sized activations.
+The augmentation pipeline described in
+Section~\ref{sec:impl-data-asl} was applied to the training set, and no
+augmentation was used on validation or test. End-to-end training took
+roughly two hours: 38~minutes for the feature-extraction stage and
+85~minutes for the fine-tuning stage. The best checkpoint, selected by
+validation accuracy, occupies 15.71~MB when serialized as a PyTorch
+\texttt{state\_dict} and runs at \num{490} frames per second on the same
+GPU at inference. The same checkpoint is later converted to TensorFlow
+Lite for on-device deployment, as described in
+Section~\ref{sec:impl-android}.
+
+%==============================================================================
+\section{Landmark-Based Letter Model: MLP}
+\label{sec:impl-mlp}
+
+The second letter classifier replaces the convolutional backbone with an
+explicit feature extractor: MediaPipe Hands detects a single hand in each
+image and returns 21 three-dimensional joint coordinates. These 63 numbers
+are the only input that the classifier sees; the raw pixels are discarded
+entirely. The classifier itself is a four-layer multi-layer perceptron with
+hidden widths $[256, 128, 64]$ followed by the 29-way output. Each hidden
+layer is followed by batch normalization, a ReLU activation and a dropout
+of \num{0.3}. The full network contains roughly \num{60000} parameters and
+weighs 0.24~MB once serialized---about 65$\times$ smaller than the
+EfficientNet checkpoint.
+
+Landmark extraction is a lossy operation. Of the \num{87000} training
+images, MediaPipe was able to recover a hand in
+\num{63590} (\SI{73.09}{\percent}); the remaining \num{23410} images were
+silently dropped from the landmark-based pipeline. Three sources account
+for most of the loss. First, the \texttt{nothing} class contains no hand
+by definition and therefore contributes no landmark samples. Second, the
+letters~\textit{M} and~\textit{N} involve the thumb tucked under the other
+fingers, which routinely confuses the detector on the dataset's
+low-resolution crops. Third, motion-blurred or partially out-of-frame
+images defeat the detector even when a hand is present. This 73\% recovery
+rate is a real cost of the landmark pipeline and is reported alongside the
+classifier's accuracy in Chapter~\ref{ch:test-results}; the EfficientNet
+model is not affected because it consumes the original pixels regardless of
+whether MediaPipe would have succeeded.
+
+Training was a comparatively trivial affair: the network was trained for
+100~epochs with Adam at a learning rate of \num{1e-3}, cross-entropy loss,
+batch size 64, and no augmentation beyond what is implicit in the landmark
+extraction itself. The full training run completed in roughly five minutes
+on the same GPU, and the best checkpoint reaches a 99.38\% test accuracy
+on the subset of images that survive landmark extraction. The two
+classifiers therefore stake out the two ends of the accuracy/footprint
+trade-off that is central to this thesis: a 15.71~MB image network that
+operates on every image and a 0.24~MB landmark network that depends on a
+separate detector for its input. The trade-off is revisited quantitatively
+in Chapter~\ref{ch:test-results} and qualitatively in
+Chapter~\ref{ch:conclusion}.
+
+%==============================================================================
+\section{Word-Level Model: Bidirectional LSTM}
+\label{sec:impl-lstm}
+
+Word-level recognition is a fundamentally different problem than letter
+recognition. A single frame is insufficient: ASL words encode meaning in
+the trajectory of the two hands over roughly a second of video, and a
+classifier that ignores this temporal structure cannot do better than
+chance on motion-sensitive pairs such as \textit{change}/\textit{how}.
+The word model is therefore a recurrent network operating on a
+\((32, 128)\) feature tensor produced by the landmark pipeline of
+Section~\ref{sec:impl-landmark}: 32 uniformly sampled frames, each frame
+holding the two-handed feature vector with its presence flags.
+
+The architecture is a two-layer bidirectional LSTM with a hidden width of
+192 and dropout 0.5 between layers, followed by a fully connected
+head $(384 \rightarrow 128 \rightarrow 100)$ with a ReLU and a second
+dropout step. Bidirectional readout was chosen because ASL words are
+short enough that future context within a clip is informative for
+disambiguating the early frames; the additional cost is a doubled hidden
+state, which the 4~GB GPU absorbs without difficulty. The total parameter
+count is roughly \num{938000}, and a serialized checkpoint occupies
+5.51~MB. The choice of an LSTM rather than a more recent transformer
+encoder was driven by the dataset size: WLASL-100 provides on the order
+of ten training videos per class, and the recurrent inductive bias is
+better matched to that regime than self-attention is.
+
+\subsection{From V1 to V2: An Iterative Refinement}
+\label{sec:impl-lstm-v1v2}
+
+The current model is the second iteration of the word classifier. The
+first version, completed in March 2026, used a single-hand 63-dimensional
+input and a unidirectional LSTM and reached a validation accuracy of
+exactly 20.00\,\%---only marginally better than the 1\,\% random baseline
+of a 100-class problem. Diagnosing that failure pointed at three issues
+simultaneously, none of which were captured by a single architectural
+fix: the input dropped the second hand entirely, video clip boundaries
+were not respected, and the model was free to memorize a handful of
+clips per class without any regularizer working against it.
+
+V2 addresses each of these issues. The feature representation was widened
+to include both hands together with explicit presence flags
+(Section~\ref{sec:impl-landmark}); the WLASL \texttt{frame\_start} and
+\texttt{frame\_end} fields are now used to crop the sign-active window
+before sampling 32~frames; and the training recipe was rewritten around
+a regularization-first philosophy. The hidden width was increased from
+128 to 192 to give the model enough capacity to exploit the richer input,
+and dropout was raised from 0.3 to 0.5. Beyond these architectural
+changes, the bulk of the V1$\rightarrow$V2 improvement came from the
+training recipe described below.
+
+\subsection{Training Recipe}
+\label{sec:impl-lstm-training}
+
+Training is driven by AdamW~\cite{loshchilov2019adamw} with a learning
+rate of \num{1e-3} and a weight decay of \num{5e-4}, combined with
+\texttt{ReduceLROnPlateau} on validation accuracy
+(factor \num{0.5}, patience~5, minimum learning rate \num{1e-5}) and a
+gradient-norm clip of \num{1.0}. The loss is cross-entropy with label
+smoothing of \num{0.1}~\cite{szegedy2016rethinking}; the smoothing factor
+matters here because hand\-edness ambiguity in WLASL makes some training
+targets effectively noisy, and a softer target distribution lets the
+network commit less aggressively to those examples.
+
+Class imbalance is handled by a \texttt{WeightedRandomSampler} whose
+per-sample weight is the inverse of the class frequency in the training
+split. The sampler turns every epoch into an effectively balanced pass,
+which alone moves validation accuracy from the high 40s into the low
+50s. On top of the sampler, training mini-batches are mixed with
+Mixup~\cite{zhang2018mixup}: pairs of sequences are linearly interpolated
+with $\lambda \sim \mathrm{Beta}(0.4, 0.4)$ and the loss is computed as
+the matching convex combination of the two targets. Smaller values of
+$\alpha$ produced unstable training curves in early experiments; the
+value $0.4$ was selected because it kept training accuracy smooth without
+collapsing the class-conditional signal that the model relies on.
+
+The sequence augmentation pack is applied to the training tensors before
+Mixup, never to validation or test data. Four operations are layered on
+top of each other: a temporal jitter of $\pm 4$ frames with zero
+padding, frame-level dropout that fully zeros each frame with probability
+\num{0.15}, Gaussian noise of $\sigma = 0.02$ added to the landmark
+coordinates (but not to the presence flags), and a time-scale
+perturbation that resamples the clip with a uniform stretch factor in
+$[0.8, 1.2]$. Together they expose the network to a far broader range of
+signing speeds and detector failures than the raw 1465-video dataset
+ever could.
+
+Each model is trained for up to 100~epochs with a batch size of 32 and an
+early-stopping patience of 15 epochs on validation accuracy. On the
+training laptop, a single model converges in under two minutes once the
+landmark cache is built, which made the seed-by-seed ablation that
+underpins the rest of this section practical to run.
+
+\subsection{Five-Seed Ensemble}
+\label{sec:impl-lstm-ensemble}
+
+The final word classifier is an ensemble of five independently trained
+LSTM instances. The ensemble shares its architecture, its optimizer, and
+its training recipe with the single-model variant; only the random seed
+varies, taking the values $\{0, 1, 2, 3, 4\}$. At inference time the
+five models' logits are averaged before the softmax, rather than averaging
+their softmax outputs:
+\[
+  \ell_{\text{ens}}(x) = \frac{1}{N} \sum_{n=1}^{N} \ell_n(x),
+  \quad
+  \hat{y}(x) = \arg\max_c\, \mathrm{softmax}(\ell_{\text{ens}}(x))[c].
+\]
+Logit averaging preserves the relative magnitudes of each network's
+confidence and is the standard choice for small ensembles in the
+literature~\cite{dietterich2000ensemble}. The ensemble lifts validation
+accuracy from \SI{58.85}{\percent} (seed~0) to \SI{60.08}{\percent}, and
+the corresponding test-set Top-1 from \SI{53.23}{\percent} to
+\SI{56.22}{\percent} (Chapter~\ref{ch:test-results}). The cost is a
+linear blow-up in storage---five 5.51~MB checkpoints together occupy
+27.55~MB---and a linear blow-up in inference compute. The mobile demo
+exposes the ensemble as a runtime-selectable option alongside the
+single-model variant precisely because the size and speed cost may not
+be acceptable on every device.
+
+\subsection{Hyperparameter Summary}
+\label{sec:impl-lstm-hparams}
+
+Table~\ref{tab:impl-lstm-hparams} consolidates the hyperparameters of the
+word model so that they can be reproduced from a single page. Random
+seeds, dataset-version pointers and exact training times are deferred to
+Section~\ref{sec:impl-repro}.
+
+\begin{table}[h]
+\centering
+\caption{Hyperparameters of the word recognition model.}
+\label{tab:impl-lstm-hparams}
+\begin{tabular}{ll}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+Input shape                & $(32, 128)$ \\
+Hidden size                & 192 \\
+LSTM layers                & 2, bidirectional \\
+Inter-layer dropout        & 0.5 \\
+FC head                    & $384 \rightarrow 128 \rightarrow 100$ \\
+Trainable parameters       & $\approx \num{938000}$ \\
+Optimizer                  & AdamW \\
+Learning rate              & \num{1e-3} \\
+Weight decay               & \num{5e-4} \\
+Loss                       & Cross-entropy, label smoothing 0.1 \\
+LR scheduler               & ReduceLROnPlateau ($0.5$, patience 5) \\
+Gradient clipping          & $\|\cdot\|_2 \leq 1$ \\
+Batch size                 & 32 \\
+Max epochs                 & 100 \\
+Early-stopping patience    & 15 \\
+Temporal jitter            & $\pm 4$ frames \\
+Frame dropout              & 0.15 \\
+Gaussian noise on coords   & $\sigma = 0.02$ \\
+Time-scale range           & $[0.8, 1.2]$ \\
+Mixup                      & $\mathrm{Beta}(0.4, 0.4)$ \\
+Class balancing            & WeightedRandomSampler ($w_i \propto 1 / n_{y_i}$) \\
+Ensemble                   & 5 seeds, logit averaging \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%==============================================================================
+\section{Mobile Demonstration Application}
+\label{sec:impl-android}
+
+The four trained models share a single Android application that serves as
+the project's deliverable demo and as the platform on which the
+comparative claims of Chapter~\ref{ch:test-results} are validated. The
+demo lets a user point the device's front camera at one or two hands and
+see Top-3 predictions, frame rate and end-to-end latency rendered in
+real time. Two classifiers are exposed for letters (EfficientNet-B0 and
+the landmark MLP) and two for words (the single-seed BiLSTM and the
+five-seed ensemble); each can be selected at runtime through a toggle on
+the corresponding screen.
+
+\subsection{Architecture}
+\label{sec:impl-android-arch}
+
+The application is written natively in Kotlin with Jetpack Compose for
+the user interface, CameraX for the camera pipeline, MediaPipe Tasks for
+on-device hand-landmark extraction, and TensorFlow~Lite for classifier
+inference. A bottom-bar navigates between three screens: a Home screen
+that summarizes the project and the four models, a Letters screen that
+hosts the two image/landmark classifiers, and a Words screen that hosts
+the two LSTM variants. Dependency wiring is handled by a small
+\texttt{AppContainer} singleton instantiated in
+\texttt{Application.onCreate}, which keeps the architecture light and
+avoids pulling in a full dependency-injection framework for a project of
+this size.
+
+Three components do most of the work. \texttt{HandLandmarkerSource}
+manages the lifecycle of the MediaPipe \textit{HandLandmarker} in
+\textsc{live\_stream} mode and exposes the detected landmarks as a state
+flow. \texttt{FrameAnalyzer}, registered as a CameraX
+\texttt{ImageAnalysis.Analyzer}, forwards each frame to MediaPipe and
+maintains a sliding FPS estimate. \texttt{InferenceManager} owns one
+classifier instance per model type and dispatches landmark or pixel
+input to the currently selected one. Figure placeholders for the high
+level data flow and the per-frame sequence diagram are deferred to
+Chapter~\ref{ch:analysis-design}; the discussion here focuses on
+implementation choices.
+
+\subsection{Per-Frame Inference Pipeline}
+\label{sec:impl-android-pipeline}
+
+CameraX delivers preview frames into an \texttt{ImageAnalysis} queue at
+the camera's native rate. Each frame is converted to a bitmap and
+submitted to MediaPipe through \texttt{detectAsync}, which returns its
+results on a callback thread. The callback runs the active classifier
+and pushes the result into a Kotlin flow that the screen's
+\texttt{ViewModel} observes. The four classifiers obey a small common
+interface but their inputs differ:
+
+\begin{itemize}
+  \item \textbf{EfficientNet-B0} consumes the raw bitmap. The frame is
+        center-cropped, resized to $224 \times 224$, normalized with
+        the ImageNet statistics, and passed to the TFLite runtime,
+        which returns a 29-dimensional logit vector. MediaPipe is not
+        required for this classifier, but its overlay is still rendered
+        so that the two letter models share the same on-screen feedback.
+  \item \textbf{Landmark MLP} consumes the 63-dimensional landmark
+        vector for the detected hand and returns its own 29-dimensional
+        output. If MediaPipe fails to detect a hand in the current
+        frame, no inference is performed and the UI displays the last
+        confident prediction together with a faded ``no hand visible''
+        marker.
+  \item \textbf{BiLSTM single} maintains a 32-frame sliding buffer of
+        the two-handed 128-dimensional feature vectors described in
+        Section~\ref{sec:impl-landmark}. Once the buffer is filled the
+        classifier is invoked on every frame, producing a 100-class
+        prediction. While the buffer is filling, a sequence-progress
+        overlay informs the user that the model is not yet making
+        confident predictions.
+  \item \textbf{BiLSTM ensemble} runs the five seed checkpoints in
+        sequence on the same buffer and averages their logits before
+        softmax. The five checkpoints are loaded lazily on the first
+        switch to ensemble mode to keep cold-start time predictable.
+\end{itemize}
+
+All TFLite interpreters are wrapped in a thin \texttt{TFLiteRunner}
+helper that enables the XNNPACK delegate where supported and falls back
+to the default CPU kernels otherwise. GPU delegation was experimented
+with for the image model on the test device but introduced a long
+warm-up period without delivering a stable speedup, so CPU+XNNPACK was
+selected as the default.
+
+\subsection{Model Switching and User Interface}
+\label{sec:impl-android-ui}
+
+Each camera screen places a segmented toggle in the top-left of the
+preview area for switching between its two model variants, an
+on-overlay FPS and latency badge in the top-right, and a Top-3
+prediction panel anchored at the bottom. Switching models is a
+synchronous operation: the toggle updates \texttt{InferenceManager}'s
+active classifier and the next analyzer callback uses the new model.
+The classifiers are cached across switches so that the second activation
+of any model is effectively instantaneous. The Words screen adds a
+sequence-progress overlay while the LSTM buffer fills, and the Letters
+screen overlays the detected hand-landmark skeleton on top of the
+preview as a sanity check that the input the model is consuming is
+indeed the user's hand.
+
+Two ergonomic decisions are worth recording. First, the application
+defaults to the device's front camera, which is the natural choice for
+single-user signing and matches the framing of every training image in
+the ASL Alphabet dataset. The landmark overlay is horizontally flipped
+to account for the preview's mirror transform so that user-perceived
+motion and overlay motion coincide. Second, the preview is rendered
+edge-to-edge underneath a transparent status bar, with screen-level
+content (titles, toggles) padded into the safe area. The result is a
+camera surface that occupies the entire screen rather than the
+shrunken-letterbox feel of a standard \texttt{Scaffold} content slot.
+
+\subsection{Edge Cases and Failure Handling}
+\label{sec:impl-android-edges}
+
+Three issues recurred during integration and informed the current
+defensive behavior. First, the MediaPipe live-stream API requires
+monotonically increasing timestamps and silently throws if a stale
+frame is submitted after a more recent one has been processed. The
+analyzer protects against this with a volatile guard that drops
+out-of-order frames before \texttt{detectAsync} is called. Second, on
+the test device the MediaPipe GPU delegate took roughly thirty seconds
+to warm up while blocking the analyzer thread; the current
+implementation pre-loads the \textit{HandLandmarker} on the IO
+dispatcher and falls back to the CPU delegate, which initializes in
+roughly 300 milliseconds and is sufficient for the full pipeline to
+reach above 20~FPS. Third, the application gracefully handles the
+permission flow: the first launch displays a permission gate that
+re-prompts on rejection and links to system settings, so that a denied
+camera permission does not surface as a blank screen or a crash.
+
+%==============================================================================
+\section{Reproducibility}
+\label{sec:impl-repro}
+
+Every result reported in Chapter~\ref{ch:test-results} can be reproduced
+from a clean checkout of the project repository.\footnote{Source code,
+training scripts and trained checkpoints are hosted at
+\url{https://github.com/yusufkenanakgun/ai-isaret-dili}.} Training the
+image classifier requires the ASL Alphabet dataset to be placed in
+\texttt{data/asl\_alphabet/}; the landmark cache used by the MLP and the
+landmark splits are generated from the same images by
+\texttt{src/extract\_kaggle\_landmarks.py}. Training the word classifier
+requires the reconstructed WLASL-100 collection described in
+Section~\ref{sec:impl-data-wlasl}; the per-clip landmark tensors are
+written to \texttt{data/faz6\_v2/landmarks\_wlasl100/} by
+\texttt{src/faz6/extract\_v2.py} and consumed by
+\texttt{src/faz6/train\_v2.py}.
+
+Random seeds are fixed in each training script: the image and MLP
+classifiers use seed~42; the BiLSTM uses seed~0 for the single-model
+variant and seeds $\{0, 1, 2, 3, 4\}$ for the ensemble. Library versions
+are pinned in \texttt{requirements.txt}; the salient versions are listed
+in Table~\ref{tab:impl-environment}. All models were trained on the same
+laptop GPU described in Section~\ref{sec:impl-environment}, with the
+training times consolidated in Table~\ref{tab:impl-training-summary}.
+
+\begin{table}[h]
+\centering
+\caption{Training time and final checkpoint size for the four models.}
+\label{tab:impl-training-summary}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Model} & \textbf{Epochs} & \textbf{Training time} & \textbf{Params} & \textbf{Checkpoint} \\
+\midrule
+EfficientNet-B0          & 5 + 6   & 124 min  & 4.1\,M   & 15.71~MB \\
+Landmark MLP             & 100     & 5 min    & 60\,K    & 0.24~MB \\
+BiLSTM (single)          & 76--100 & 2 min    & 938\,K   & 5.51~MB \\
+BiLSTM ensemble (5 seeds) & 76--100 each & 9.5 min total & 4.7\,M & 27.55~MB \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The on-device application reads the same checkpoints after they are
+converted to TensorFlow~Lite by \texttt{src/convert\_to\_tflite.py}; the
+converted files are committed to
+\texttt{models/tflite/} for direct consumption by the Android project.
+Conversion is deterministic given the PyTorch checkpoints, so the
+mobile-side results in Chapter~\ref{ch:test-results} carry the same
+reproducibility guarantees as the offline numbers.
