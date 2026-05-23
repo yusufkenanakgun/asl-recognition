@@ -1,22 +1,628 @@
 \chapter{Analysis and Design}
 \label{ch:analysis-design}
 
-\todo{OS/language independent description of the system: requirements, use cases, architecture, diagrams.}
+This chapter formalises the recognition problem introduced in
+Chapter~\ref{ch:introduction} and sets out the design that
+Chapter~\ref{ch:implementation} subsequently realises. It is
+deliberately platform- and language-agnostic: it describes what the
+system must do and how its components are organised, without
+committing to the specific libraries, model versions or training
+recipes that the next chapter unpacks. Section~\ref{sec:design-fr}
+specifies the functional requirements derived from the project
+proposal; Section~\ref{sec:design-nfr} translates the proposal's
+evaluation criteria into measurable non-functional requirements;
+Sections~\ref{sec:design-usecase}--\ref{sec:design-sequence} document
+the system from the user, structural and behavioural viewpoints
+respectively; and Section~\ref{sec:design-algorithm} fixes the two
+core algorithms---augmented training and ensemble inference---in
+pseudo-code so that they can be reproduced without reference to a
+particular framework.
 
+%==============================================================================
 \section{Functional Requirements}
-\todo{FR-01..FR-06 from requirements analysis.}
+\label{sec:design-fr}
 
+The project proposal commits to a single high-level capability:
+``translates hand gestures into text'' via two complementary
+recognition regimes (static fingerspelling and dynamic word-level
+signing), evaluated on the ASL Alphabet and WLASL datasets and
+delivered as a real-time mobile demo. From this scope statement six
+functional requirements are derived. Each one is phrased as an
+observable behaviour rather than as an implementation choice; the
+mapping from requirement to component is the subject of
+Chapter~\ref{ch:implementation}.
+
+\begin{description}
+  \item[FR-01 --- Image-based letter recognition.] The system shall
+        classify a single RGB image of a hand into one of the 29
+        classes of the ASL Alphabet dataset using a convolutional
+        neural network. The output shall include the predicted class
+        and a confidence score.
+
+  \item[FR-02 --- Landmark-based letter recognition.] The system
+        shall provide an alternative letter classifier that consumes
+        the 21 hand keypoints extracted by MediaPipe Hands rather
+        than the raw image. The classifier shall expose the same
+        29-class output interface as FR-01 so that the two pipelines
+        can be compared on an equal footing.
+
+  \item[FR-03 --- Word-level recognition.] The system shall
+        classify short video clips of isolated ASL signs into one of
+        the 100 glosses of the WLASL-100 subset using a temporal
+        sequence model over per-frame hand landmarks. The temporal
+        model operates on a fixed-length frame window so that its
+        inference cost is bounded.
+
+  \item[FR-04 --- On-device mobile demonstration.] The system shall
+        host all letter and word classifiers in a mobile application
+        that runs on a consumer Android smartphone, captures the
+        device camera feed in real time, executes inference on the
+        device (no server-side component), and renders the predicted
+        sign together with its confidence in the user interface.
+
+  \item[FR-05 --- Comparative evaluation.] The system shall produce
+        a reproducible evaluation that reports, for every
+        classifier, the metrics specified in the project proposal:
+        Top-1 accuracy, Top-5 accuracy, per-class F1 score, confusion
+        matrix, frames per second, and serialised model size in
+        megabytes.
+
+  \item[FR-06 --- Data and preprocessing pipeline.] The system
+        shall implement a deterministic preprocessing pipeline that
+        ingests the source datasets, partitions them into training,
+        validation and test splits, applies the modality-specific
+        feature extraction (image normalisation for FR-01, landmark
+        extraction for FR-02 and FR-03), and caches intermediate
+        artefacts so that experiments are reproducible from the same
+        seed.
+\end{description}
+
+Table~\ref{tab:design-fr} consolidates the six requirements together
+with the principal input and output of each, and points to the
+section of Chapter~\ref{ch:implementation} that documents the
+corresponding implementation.
+
+\begin{table}[h]
+\centering
+\caption{Functional requirements summary.}
+\label{tab:design-fr}
+\small
+\begin{tabular}{lp{4.2cm}p{3.6cm}l}
+\toprule
+\textbf{ID} & \textbf{Input} & \textbf{Output} & \textbf{Realised in} \\
+\midrule
+FR-01 & Single RGB image (one hand)        & 29-way class + confidence  & \S\ref{sec:impl-efficientnet} \\
+FR-02 & 21-keypoint landmark vector        & 29-way class + confidence  & \S\ref{sec:impl-mlp} \\
+FR-03 & Fixed-length landmark sequence     & 100-way class + confidence & \S\ref{sec:impl-lstm} \\
+FR-04 & Live camera frames                 & On-screen Top-3 prediction & \S\ref{sec:impl-android} \\
+FR-05 & Trained model checkpoints          & Tables and plots           & Ch.~\ref{ch:test-results} \\
+FR-06 & Public datasets on disk            & Cached features and splits & \S\ref{sec:impl-data} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+A small number of capabilities are explicitly out of scope and are
+listed once here so that they are not re-derived as requirements in
+later chapters. The system does not handle continuous sign language
+translation, does not target sign languages other than American Sign
+Language, does not perform server-side inference, and does not build
+a class-diagram-driven object-oriented model of the data flow;
+Section~\ref{sec:intro-scope} of Chapter~\ref{ch:introduction}
+states the full scope boundary.
+
+%==============================================================================
 \section{Non-Functional Requirements}
-\todo{Latency, model size, accuracy targets.}
+\label{sec:design-nfr}
 
-\section{Use Case Diagram}
-\todo{Figure: actor + 4 use cases.}
+The proposal does not list non-functional requirements as such, but
+its evaluation-criteria field commits the system to specific
+measurement axes, and its hardware field commits to a consumer-grade
+deployment platform. The following non-functional requirements are
+the engineering elaboration of those commitments. They are stated as
+acceptance properties of the finished system rather than as
+optimisation targets, and they are revisited quantitatively in
+Chapter~\ref{ch:test-results}.
 
+\begin{description}
+  \item[NFR-01 --- Real-time on-device inference.] The end-to-end
+        camera-to-prediction pipeline shall sustain a frame rate
+        sufficient for an interactive user experience on a
+        mid-range Android device, without offloading any inference
+        step to a remote server.
+
+  \item[NFR-02 --- Reportable accuracy.] Each classifier shall be
+        accompanied by a held-out test-set evaluation that reports
+        Top-1 accuracy, Top-5 accuracy (where the number of classes
+        makes this informative), per-class F1 score and a confusion
+        matrix.
+
+  \item[NFR-03 --- Reproducible training.] Every reported result
+        shall be reproducible from a documented combination of
+        dataset, random seed and hyperparameter configuration.
+        Long-running preprocessing steps shall be cached on disk
+        and invalidated only when their inputs change.
+
+  \item[NFR-04 --- Graceful handling of detection failure.] When
+        the landmark extractor fails to find a hand in the input
+        frame, the system shall communicate this state to the user
+        rather than display a previously cached or random
+        prediction, and shall not crash.
+
+  \item[NFR-05 --- Deployable model footprint.] The serialised size
+        of each classifier checkpoint shall be reported in
+        megabytes alongside its accuracy so that the
+        accuracy-versus-footprint trade-off can be evaluated. The
+        mobile application shall be capable of hosting all
+        classifiers within the storage budget of a typical Android
+        installable package.
+
+  \item[NFR-06 --- Modular extensibility.] The training and
+        inference pipelines shall be parametric in the number of
+        output classes so that adding new fingerspelling or word
+        classes does not require structural code changes.
+
+  \item[NFR-07 --- Documented dependencies.] All software
+        dependencies shall be pinned to specific versions; the
+        system shall build and run on a consumer development laptop
+        with an NVIDIA GPU, as specified by the proposal hardware
+        field.
+\end{description}
+
+Table~\ref{tab:design-nfr} maps each non-functional requirement to
+the measurement instrument that will be used to verify it in
+Chapter~\ref{ch:test-results}.
+
+\begin{table}[h]
+\centering
+\caption{Non-functional requirements and their verification.}
+\label{tab:design-nfr}
+\small
+\begin{tabular}{lp{4.0cm}p{6.0cm}}
+\toprule
+\textbf{ID} & \textbf{Property} & \textbf{Verified by} \\
+\midrule
+NFR-01 & Real-time on-device inference     & On-device FPS measurements (\S\ref{sec:results-on-device}) \\
+NFR-02 & Reportable accuracy               & Top-1/Top-5/F1 tables (\S\S\ref{sec:results-letters}--\ref{sec:results-words}) \\
+NFR-03 & Reproducible training             & Fixed seeds, pinned versions (\S\ref{sec:impl-repro}) \\
+NFR-04 & Graceful detection failure        & No-hand UI state (\S\ref{sec:impl-android-edges}) \\
+NFR-05 & Deployable footprint              & Checkpoint sizes in MB (Tables~\ref{tab:results-letters} and \ref{tab:impl-training-summary}) \\
+NFR-06 & Modular extensibility             & \texttt{num\_classes} parameter (\S\ref{sec:impl-lstm}) \\
+NFR-07 & Documented dependencies           & \texttt{requirements.txt}, Table~\ref{tab:impl-environment} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two non-functional axes that are sometimes treated as requirements
+in the broader sign-recognition literature are deliberately omitted
+here. The first is a numeric accuracy threshold per task: the
+proposal does not pin one, and Chapter~\ref{ch:test-results} reports
+the achieved accuracy against published baselines on the same data
+rather than against a self-imposed pass/fail bar. The second is a
+universal model-size cap: a single cap would penalise the image
+network unfairly relative to the landmark network even though both
+are useful at different points of the accuracy/footprint curve, and
+the comparative framing of the thesis (Chapter~\ref{ch:introduction})
+is the more informative axis to report on.
+
+%==============================================================================
+\section{Use Case View}
+\label{sec:design-usecase}
+
+The system exposes four end-user use cases, all of them initiated
+by the same actor---the \emph{Signer}, who points the device camera
+at his or her own hand. Three of the four are recognition cases:
+UC-1 and UC-2 cover fingerspelling under the two competing letter
+classifiers (image-based EfficientNet-B0 and landmark-based MLP),
+and UC-3 covers isolated word recognition with the BiLSTM. The
+fourth case, UC-4, lets the user switch the active recognition
+mode at runtime; the choice between the single-seed and the
+five-seed ensemble word classifier is exposed through this same
+toggle rather than as a separate user case, since from the
+signer's perspective both produce the same Top-3 prediction
+surface. A fifth, supporting case---``handle no-hand
+frame''---is included in the model because it is the only
+exception path the user can observe from the user interface.
+
+Figure~\ref{fig:design-usecase} shows the resulting use-case
+diagram. The notation follows UML~2.5: the rectangular boundary
+represents the mobile application; the elliptical nodes are use
+cases; and the \textsf{<<extend>>} association captures the
+no-hand exception path, which extends the three recognition cases
+only when MediaPipe Hands fails to detect a hand in the current
+frame.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/ch3_use_case.pdf}
+\caption{Use case diagram of the mobile recognition system. A
+single \emph{Signer} actor initiates one of three recognition use
+cases (UC-1 image-based letter, UC-2 landmark-based letter, UC-3
+word) or switches the active recognition mode (UC-4). All three
+recognition use cases are optionally extended by the no-hand
+fallback (UC-5) whenever MediaPipe Hands fails to detect a hand
+in the current frame.}
+\label{fig:design-usecase}
+\end{figure}
+
+Three points about the diagram are worth noting because they recur
+in the architectural and behavioural views below. First, the
+three recognition cases (UC-1, UC-2, UC-3) share the same UI
+surface---the camera preview, the Top-3 panel and the FPS/latency
+badge described in Section~\ref{sec:impl-android-ui}---and differ
+only in which classifier is wired in behind the segmented model
+toggle exposed by UC-4. Second, the no-hand fallback is a single
+shared exception path: the recovery behaviour (faded prediction
+text, no false-positive classifier call) is identical regardless
+of which recognition case was active. Third, no administrative or
+system-management actor is modelled, because the application has
+no remote backend, no user accounts and no settings persistence
+beyond the active model selection.
+
+%==============================================================================
 \section{System Architecture}
-\todo{Figure: end-to-end data flow.}
+\label{sec:design-arch}
 
-\section{Sequence Diagrams}
-\todo{Letter recognition and word recognition flows.}
+The system splits cleanly into two physically separate stacks that
+share a single artefact: the trained classifier weights. The
+\emph{offline training stack} runs on a development workstation and
+turns raw datasets into serialised model checkpoints. The
+\emph{on-device inference stack} runs on the user's Android phone
+and turns live camera frames into on-screen predictions using those
+same checkpoints, converted to a mobile inference format.
+Figure~\ref{fig:design-architecture} renders the two stacks as a
+single block diagram with the checkpoint hand-off marked explicitly.
 
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/ch3_architecture.pdf}
+\caption{End-to-end system architecture. The offline training stack
+on a workstation produces TFLite checkpoints; the on-device
+inference stack consumes the same checkpoints inside the Android
+application.}
+\label{fig:design-architecture}
+\end{figure}
+
+\subsection{Offline Training Stack}
+\label{sec:design-arch-offline}
+
+The training stack is a pure data-flow pipeline. Raw inputs enter
+on the left: roughly \num{87000} RGB images from the ASL Alphabet
+dataset, and roughly \num{1500} short MP4 clips from the
+reconstructed WLASL-100 collection. The preprocessing stage forks
+by modality. For the image branch (FR-01) the pipeline resizes
+each frame to $224 \times 224$, applies ImageNet normalisation and
+emits a tensor batch directly to the EfficientNet trainer. For the
+landmark branches (FR-02 and FR-03) MediaPipe Hands is invoked
+once per image or per sampled frame, and the resulting
+21-keypoint vectors are cached on disk; the same cache is consumed
+by both the MLP letter trainer and the BiLSTM word trainer, so the
+dominant cost of landmark extraction is paid only once.
+
+Three parallel training routines fan out from the cached features.
+Each routine consumes its own dataset slice (a stratified 70/15/15
+split for the letter task and the official WLASL-100 split for the
+word task), executes the architecture-specific training loop and
+writes a single ``best-by-validation'' checkpoint to disk. The
+word trainer additionally runs five times with different random
+seeds to populate the ensemble. The final stage is a deterministic
+PyTorch-to-TFLite converter that takes each checkpoint and emits a
+mobile-compatible flatbuffer; the four flatbuffers are then bundled
+as assets into the Android application's APK.
+
+\subsection{On-Device Inference Stack}
+\label{sec:design-arch-ondevice}
+
+The on-device stack is event-driven rather than data-flow. The
+camera library delivers preview frames into an analysis queue at
+the camera's native rate. A \emph{FrameAnalyzer} component removes
+a frame from the queue, hands it to the MediaPipe landmark engine
+in live-stream mode, and maintains a rolling estimate of the
+achieved frame rate that the UI badge consumes. The
+\emph{InferenceManager} component sits behind a small interface
+common to all four classifiers
+(\textsf{predict(input)}~$\to$~\textsf{softmaxOutput}) and
+dispatches the current landmark or pixel input to whichever model
+the user has selected from the on-screen toggle. Its output flows
+into a view-model component, which the preview screen observes and
+which drives the Top-3 prediction panel.
+
+This separation places three policy boundaries inside the stack
+that are otherwise easy to entangle. The camera library is the
+only component aware of pixels; the landmark engine is the only
+component aware of MediaPipe; the inference runtime is the only
+component aware of model weights; and the UI is the only component
+aware of human-readable labels. The integration glue between them
+is intentionally thin so that swapping any one of the four for a
+future replacement (a different camera library, a different
+landmark extractor, a different inference runtime or a different
+UI framework) does not perturb the other three.
+Chapter~\ref{ch:implementation} documents the concrete classes
+that implement these boundaries.
+
+%==============================================================================
+\section{Behavioural View}
+\label{sec:design-sequence}
+
+The use-case and architectural views describe \emph{what} the
+system does and \emph{how} it is structured; the present section
+describes \emph{when}. Two sequence diagrams cover the two
+recognition regimes and together account for the per-frame
+behaviour of every primary use case in
+Figure~\ref{fig:design-usecase}, and a state diagram summarises the
+application-level lifecycle inside which the per-frame behaviour
+takes place.
+
+\subsection{Letter Recognition Flow}
+\label{sec:design-sequence-letter}
+
+Letter recognition is a stateless per-frame pipeline: each preview
+frame is processed independently, with no buffer or temporal state
+maintained between frames.
+Figure~\ref{fig:design-sequence-letter} shows the sequence of
+messages exchanged between the participants---\textsf{Signer},
+camera library, \textsf{FrameAnalyzer}, MediaPipe landmark engine,
+\textsf{InferenceManager} and the UI---for a single frame.
+
+\begin{sidewaysfigure}
+\centering
+\includegraphics[width=\textwidth]{figures/ch3_sequence_letter.pdf}
+\caption{Sequence diagram of the letter recognition flow for a
+single preview frame. The \texttt{alt} fragment distinguishes the
+two letter classifiers; the \texttt{opt} fragment captures the
+no-hand fallback path.}
+\label{fig:design-sequence-letter}
+\end{sidewaysfigure}
+
+Three message-passing properties shape the rest of the design.
+First, the landmark engine's asynchronous detection call returns
+its result on a callback thread; the analyzer must therefore
+maintain a strictly monotonic frame timestamp to avoid the
+``smaller timestamp than processed timestamp'' exception that the
+live-stream API throws on out-of-order inputs
+(Section~\ref{sec:impl-android-edges}). Second, the classifier
+invocation is conditional on which model the user has selected,
+but the two branches share the same downstream messages, which is
+why the four primary use cases of Figure~\ref{fig:design-usecase}
+produce the same UI behaviour. Third, the no-hand fallback
+short-circuits the classifier call entirely: when the landmark
+list is empty, the analyzer skips inference rather than invoke
+either classifier on a zero vector, which is what NFR-04 requires.
+
+\subsection{Word Recognition Flow}
+\label{sec:design-sequence-word}
+
+Word recognition introduces a temporal buffer that letter
+recognition does not need. The classifier expects a fixed window
+of landmark frames, so a single preview frame is not sufficient to
+produce a prediction.
+Figure~\ref{fig:design-sequence-word} shows the resulting flow,
+which differs from the letter flow in two places: a sliding buffer
+is maintained inside the analyzer, and the classifier call is
+gated on the buffer being full.
+
+\begin{sidewaysfigure}
+\centering
+\includegraphics[width=\textwidth]{figures/ch3_sequence_word.pdf}
+\caption{Sequence diagram of the word recognition flow. The
+sliding \texttt{SequenceBuffer} accumulates per-frame features
+until the window of 32 frames is full; the ensemble fragment
+expands the classifier call into five seeded inferences whose
+logits are averaged before softmax.}
+\label{fig:design-sequence-word}
+\end{sidewaysfigure}
+
+The buffer-fill phase deserves a brief comment. While the buffer
+is filling---which takes roughly one second at 30~FPS---the system
+shows a sequence-progress overlay rather than a confident
+prediction, so that the user receives feedback that the
+application is alive without being misled by a low-quality early
+classification. Once the buffer is full, the classifier is invoked
+on every subsequent frame, so the effective prediction rate
+matches the camera frame rate after the initial fill. The ensemble
+variant extends the classifier call into a loop over five seeded
+models whose logits are averaged before the softmax; this is the
+structure that Section~\ref{sec:design-algorithm-ensemble} pins
+down in pseudo-code.
+
+\subsection{Application Lifecycle}
+\label{sec:design-sequence-state}
+
+The application as a whole moves through a small number of
+behavioural states whose transitions are independent of the
+recognition task. At launch it is in
+\textsf{Requesting~Permission}. Once the camera permission is
+granted it transitions to \textsf{Initialising}, during which the
+landmark engine and the inference interpreters are loaded on a
+background dispatcher; this state is what produces the cold-start
+delay observed in Section~\ref{sec:results-on-device}. The
+application then settles into \textsf{Streaming}, the steady state
+in which all the sequence-diagram traffic of the previous
+subsections takes place. Two recoverable sub-states branch off
+from \textsf{Streaming}: \textsf{No~Hand~Detected} (entered
+whenever the landmark callback returns an empty list and exited as
+soon as a hand is detected again) and \textsf{Background}
+(entered on \texttt{onPause} when the user leaves the application
+and exited on \texttt{onResume}, with the classifier weights
+retained in memory so that the second resumption is essentially
+instantaneous). Figure~\ref{fig:design-state} summarises the
+transitions.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/ch3_state.pdf}
+\caption{State diagram of the mobile application. The
+\texttt{Streaming} state is the steady state in which both
+sequence diagrams of the previous subsections execute.}
+\label{fig:design-state}
+\end{figure}
+
+%==============================================================================
 \section{Algorithmic Design}
-\todo{Pseudo-code for training loop and ensemble inference.}
+\label{sec:design-algorithm}
+
+Three algorithms drive most of the system's non-trivial run-time
+behaviour and are pinned down here so that they can be reproduced
+in a different framework or compared against alternative
+formulations. Section~\ref{sec:design-algorithm-normalisation}
+fixes the per-frame feature representation that the landmark
+pipelines consume;
+Section~\ref{sec:design-algorithm-training} fixes the
+mixup-augmented training step that the word model relies on; and
+Section~\ref{sec:design-algorithm-ensemble} fixes the
+logit-averaging inference step that the ensemble variant performs
+at run time. The concrete hyperparameter values that populate the
+algorithms appear in Chapter~\ref{ch:implementation}.
+
+\subsection{Per-Frame Feature Representation}
+\label{sec:design-algorithm-normalisation}
+
+The word classifier consumes a fixed-length sequence of
+128-dimensional feature vectors, one per sampled video frame. The
+features are constructed in two stages: a per-hand normalisation
+that removes signer-to-camera distance variance, and a left/right
+channel assignment that turns the landmark engine's two-element
+output into a fixed-layout vector.
+
+Per-hand normalisation places the wrist at the origin and uses the
+wrist-to-MCP distance as the unit of length:
+\begin{equation}
+  \mathbf{c}'_i \;=\;
+    \frac{\mathbf{c}_i - \mathbf{c}_0}
+         {\lVert \mathbf{c}_9 - \mathbf{c}_0 \rVert},
+  \qquad i \in \{0, 1, \dots, 20\},
+  \label{eq:design-norm}
+\end{equation}
+where $\mathbf{c}_i \in \mathbb{R}^3$ is the $i$-th raw landmark,
+$\mathbf{c}_0$ the wrist and $\mathbf{c}_9$ the middle-finger MCP
+joint. The resulting normalised coordinates are concatenated with
+a binary presence flag $p \in \{0, 1\}$ that drops to zero
+whenever the landmark engine fails to detect the hand on the
+current frame, yielding a 64-dimensional per-hand block. The left
+and right blocks are concatenated in a fixed order (left first,
+then right) to produce the 128-dimensional per-frame feature
+vector
+\begin{equation}
+  \mathbf{f} \;=\; \bigl[\,
+    p_L,\; \mathbf{c}'_{L,0}, \dots, \mathbf{c}'_{L,20},\;
+    p_R,\; \mathbf{c}'_{R,0}, \dots, \mathbf{c}'_{R,20}
+  \,\bigr]
+  \;\in\; \mathbb{R}^{128}.
+  \label{eq:design-feature}
+\end{equation}
+The presence flag is what makes
+equation~\eqref{eq:design-feature} unambiguous when a hand is
+absent: the corresponding coordinate block is zero-padded and the
+network is told, through the flag, to interpret the zeros as ``no
+information here'' rather than as a hand at the origin.
+
+\subsection{Mixup-Augmented Training Step}
+\label{sec:design-algorithm-training}
+
+The word classifier is trained with a mixup-regularised
+cross-entropy loss that linearly interpolates pairs of training
+sequences and their labels. Algorithm~\ref{alg:design-train}
+states the single training step in framework-independent form; the
+outer training loop (initialisation, optimiser update,
+learning-rate scheduling and early stopping) is the standard
+supervised template and is not reproduced here.
+
+\begin{algorithm}[h]
+\caption{Mixup-augmented training step (word classifier).}
+\label{alg:design-train}
+\begin{algorithmic}[1]
+\Require Batch $(\mathbf{X}, \mathbf{y})$ with
+         $\mathbf{X} \in \mathbb{R}^{B \times T \times D}$,
+         network $f_\theta$, mixup parameter $\alpha$,
+         label-smoothing factor $\epsilon$
+\State Apply sequence augmentations to $\mathbf{X}$
+       \Comment{temporal jitter, frame dropout, Gaussian noise, time-scaling}
+\State Sample $\lambda \sim \mathrm{Beta}(\alpha, \alpha)$
+\State Sample a random permutation $\sigma$ of $\{1, \dots, B\}$
+\State $\tilde{\mathbf{X}} \gets
+       \lambda\,\mathbf{X} + (1 - \lambda)\,\mathbf{X}_{\sigma}$
+\State $\tilde{\mathbf{p}} \gets
+       \mathrm{softmax}(f_\theta(\tilde{\mathbf{X}}))$
+\State $\mathcal{L} \gets
+       \lambda\, \mathrm{CE}_\epsilon(\tilde{\mathbf{p}}, \mathbf{y})
+       + (1 - \lambda)\, \mathrm{CE}_\epsilon(\tilde{\mathbf{p}},
+       \mathbf{y}_{\sigma})$
+\State Backpropagate $\mathcal{L}$ through $\theta$ and update
+       parameters
+\end{algorithmic}
+\end{algorithm}
+
+Three modelling choices in Algorithm~\ref{alg:design-train} are
+worth flagging because they directly affect the empirical results
+of Chapter~\ref{ch:test-results}. Sequence augmentations are
+applied \emph{before} the mixup interpolation, not after, so that
+the interpolation operates on already-perturbed inputs rather than
+on two clean clips. Label smoothing is applied inside each
+cross-entropy term separately rather than once over the mixed
+target, which yields the same gradient but is numerically more
+stable when $\lambda$ is close to one. The mixup coefficient is
+drawn per batch rather than per sample, following common practice;
+this trades a small amount of in-batch decorrelation for a much
+simpler implementation, with no measurable accuracy cost in the
+ablation of Section~\ref{sec:results-ablation}.
+
+\subsection{Ensemble Inference}
+\label{sec:design-algorithm-ensemble}
+
+The five-seed ensemble averages the pre-softmax logits of its
+constituent models rather than averaging their softmax outputs.
+Algorithm~\ref{alg:design-ensemble} states the inference step that
+the mobile demo invokes whenever the user has selected the
+ensemble variant from the model toggle.
+
+\begin{algorithm}[h]
+\caption{Logit-averaged ensemble inference (word classifier).}
+\label{alg:design-ensemble}
+\begin{algorithmic}[1]
+\Require Input sequence
+         $\mathbf{x} \in \mathbb{R}^{T \times D}$,
+         $N$ trained networks
+         $f_{\theta_1}, \dots, f_{\theta_N}$
+\State $\boldsymbol\ell_{\text{ens}} \gets
+       \mathbf{0} \in \mathbb{R}^{C}$
+\For{$n \gets 1 \;\textbf{to}\; N$}
+  \State $\boldsymbol\ell_n \gets f_{\theta_n}(\mathbf{x})$
+         \Comment{forward pass of the $n$-th seed}
+  \State $\boldsymbol\ell_{\text{ens}} \gets
+         \boldsymbol\ell_{\text{ens}} + \boldsymbol\ell_n$
+\EndFor
+\State $\boldsymbol\ell_{\text{ens}} \gets
+       \boldsymbol\ell_{\text{ens}} / N$
+\State $\mathbf{p} \gets
+       \mathrm{softmax}(\boldsymbol\ell_{\text{ens}})$
+\State \Return $\arg\max_c \mathbf{p}_c$ and the top-three
+       $\mathbf{p}_c$ for UI display
+\end{algorithmic}
+\end{algorithm}
+
+Averaging logits rather than probabilities preserves the relative
+magnitudes of each network's confidence and is the standard choice
+for small ensembles in the
+literature~\cite{dietterich2000ensemble}. The mobile
+implementation runs the $N$ forward passes sequentially on a
+single inference runtime, which means the end-to-end latency of
+the ensemble call is approximately $N$ times the latency of a
+single forward pass; Section~\ref{sec:results-on-device}
+quantifies this overhead on the test device.
+
+%==============================================================================
+\section{Summary}
+\label{sec:design-summary}
+
+This chapter has converted the project proposal into a small set
+of functional and non-functional requirements, has presented the
+system from the user, structural and behavioural viewpoints, and
+has pinned down the three algorithmic primitives that drive most
+of the non-trivial run-time behaviour. The next chapter takes each
+of these design elements and documents the concrete components,
+libraries and hyperparameters that realise them on the development
+laptop and on the Android test device. Wherever the implementation
+deviates from the design as stated here---most notably in the
+choice of a native Kotlin mobile stack in place of the React
+Native stack suggested by the proposal---the deviation is recorded
+explicitly in Chapter~\ref{ch:implementation} together with the
+engineering reason for the change.

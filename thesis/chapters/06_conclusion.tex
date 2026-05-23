@@ -5,10 +5,244 @@
 \todo{What was built.}
 
 \section{What Was Not Done}
-\todo{Explicit out-of-scope items (CSE492 requirement).}
+\label{sec:conclusion-not-done}
+
+A clear statement of what falls outside the scope of the present
+work is as important as a statement of what was achieved, both for
+honest reporting and because the senior-project guidelines require
+it. The boundaries listed here are deliberate; each was fixed at
+the proposal stage in
+Chapter~\ref{ch:introduction} and observed throughout the
+implementation and evaluation chapters.
+
+\begin{itemize}
+  \item \textbf{Larger WLASL subsets were not evaluated.}
+        Word-level training and evaluation are restricted to the
+        WLASL-100 subset. The larger 300, 1{,}000, and 2{,}000-class
+        subsets of the WLASL benchmark are not addressed; the
+        signer-disjoint test protocol, the bidirectional LSTM
+        backbone, and the on-device export pipeline are evaluated
+        only at the 100-class operating point.
+  \item \textbf{Sign languages other than ASL were not considered.}
+        Only American Sign Language is recognised. No data, no
+        labels, and no model from any other regional sign language
+        (e.g.\ T\"urk \.I\c{s}aret Dili, British Sign Language,
+        Deutsche Geb\"ardensprache) enters the pipeline. The
+        landmark-based front end is in principle language-agnostic,
+        but cross-language transfer is not investigated.
+  \item \textbf{Continuous sign language translation was not
+        attempted.} Both pipelines classify a single isolated
+        unit---a static letter or a pre-segmented word
+        clip---and produce a class label, not a gloss sequence or a
+        translation into written language. Co-articulation between
+        adjacent signs, automatic temporal segmentation of a
+        free-flowing signing stream, and the mapping from gloss to
+        natural-language sentences are out of scope.
+  \item \textbf{No cloud or server-side inference component was
+        built.} All recognition is performed on the consumer
+        Android device, using the exported PyTorch Mobile
+        artefacts. The system does not call any remote API at
+        inference time and does not require network connectivity.
+        Server-side training, ensembling, or re-ranking---common
+        in commercial accessibility tools---is therefore not part
+        of the deliverable.
+  \item \textbf{Signer-level analysis was not performed.}
+        The ASL Alphabet dataset does not expose signer identity in
+        its public release, and the WLASL-100 evaluation follows
+        the dataset's published signer-disjoint split as a single
+        fixed partition. Per-signer accuracy breakdowns,
+        cross-signer adaptation, and few-shot personalisation to a
+        new signer are not reported.
+  \item \textbf{User-study evaluation with deaf or
+        hard-of-hearing participants was not conducted.} The
+        present evaluation is purely technical: classification
+        accuracy on held-out data and on-device throughput on the
+        target hardware. A field study with members of the
+        intended user community---which would be the appropriate
+        next step before any deployment claim---was not within the
+        scope of a one-semester senior-project thesis and is left
+        to future work.
+\end{itemize}
 
 \section{Limitations}
-\todo{6 limitations from FAZ6-V2-SONUC.}
+\label{sec:conclusion-limitations}
+
+The previous section listed what was placed outside the scope of
+the thesis by design. This section lists the residual limitations
+of \emph{what was actually built}: properties of the delivered
+system that constrain how its measurements should be interpreted
+and where its applicability ends. They are grouped into
+architectural limitations, which follow from design choices, and
+data-side limitations, which follow from the public datasets the
+system was trained on. Performance-side limitations
+(throughput drops on weaker hardware, accuracy under naturalistic
+camera conditions) depend on the on-device measurements of
+Section~\ref{sec:results-on-device} and are discussed alongside
+those numbers rather than repeated here.
+
+\paragraph{Hands-only landmark stream.}
+Both landmark-based classifiers consume the 21~hand-landmark
+output of MediaPipe Hands and nothing else. ASL signs frequently
+carry meaning in components that this representation discards:
+body location (signs anchored to the chest, shoulder, or face),
+upper-arm motion (which a two-handed sign uses to coordinate its
+hands), and non-manual markers such as eyebrow position or mouth
+shape. The error analysis of
+Section~\ref{sec:results-errors} attributes the most frequent
+WLASL-100 confusion pairs precisely to this missing context: the
+five top pairs all share handshape and gross hand motion and
+differ only in body location or facial marker. A model that adds
+body pose, and especially facial landmarks, would resolve a
+fraction of these errors at near-zero inference cost on the
+target hardware (the corresponding extension is the first item of
+Section~\ref{sec:conclusion-future}).
+
+\paragraph{Single-hand letter pipeline.}
+The landmark-based fingerspelling MLP is trained on the dominant
+hand only; if MediaPipe detects two hands in the frame, only the
+first is consumed and the rest is discarded. This is appropriate
+for the bulk of the ASL Alphabet---most letters use a single
+hand---but it leaves regional two-hand variants and the
+auxiliary classes under-supported. The image-based EfficientNet
+classifier does not have this limitation, since it operates on
+raw pixels, but it correspondingly cannot benefit from the
+explicit two-handed structure that the LSTM word model uses.
+
+\paragraph{MediaPipe detection floor.}
+Both landmark pipelines are gated on MediaPipe's hand detector.
+On the ASL Alphabet test split, MediaPipe failed to recover a
+hand on \SI{26.91}{\percent} of test images
+(Section~\ref{sec:impl-mlp}), including the entire
+\texttt{nothing} class and a thumb-tucked subset of \textit{M}
+and~\textit{N}. The Android demo handles these frames gracefully
+by greying out the landmark-based output, but the practical
+implication is the same: under conditions where MediaPipe fails
+(low-resolution input, motion blur, partial occlusion, unusual
+lighting), the landmark pipelines simply do not produce a
+prediction. The image-based pipeline is the appropriate fallback
+on such frames; the system does not currently switch between the
+two automatically.
+
+\paragraph{ASL Alphabet generalisation cannot be inferred from
+the reported test accuracy.}
+The \SI{100}{\percent} EfficientNet and \SI{99.38}{\percent} MLP
+numbers reported in Section~\ref{sec:results-letters} are
+upper-bound figures, obtained on a random 70/15/15 split of a
+single-source Kaggle dataset whose images were collected by one
+contributor in a controlled indoor setting. The dataset does not
+expose signer identity in its public release, so a
+signer-disjoint split is not constructible; the random split
+allows the same person, lighting, and background to appear in
+both partitions. The reported accuracy therefore measures
+in-distribution discrimination, not generalisation to a new
+signer in a new room with a new camera. The real-device
+measurements of Section~\ref{sec:results-qualitative} are the
+appropriate ground truth for the latter question.
+
+\paragraph{WLASL-100 person-mixed split.}
+The WLASL-100 evaluation uses the dataset's published canonical
+split, which is person-mixed: the same signer can appear in both
+the train and the test partitions. This is a known property of
+the WLASL benchmark and is shared by all published baselines in
+Table~\ref{tab:results-wlasl-lit}; the relative comparisons in
+that table are therefore on equal terms. The absolute number,
+however, is inflated relative to a stricter signer-disjoint
+protocol, and a system that reaches \SI{56.22}{\percent} on the
+mixed split should not be assumed to reach the same number on
+data from a signer that the training set has never seen.
+
+\paragraph{Isolated-only word recognition.}
+The word classifier expects a temporally pre-segmented clip
+containing exactly one sign. It does not detect when a sign
+starts or ends in a continuous signing stream, and it does not
+model co-articulation between adjacent signs. The Android demo
+applies the same fixed 32-frame window logic at inference time
+and therefore inherits this assumption: the user must produce
+each word in isolation for the displayed classification to be
+meaningful. A real accessibility tool would have to add a
+segmentation stage in front of the classifier, an extension that
+is identified as a high-impact item in
+Section~\ref{sec:conclusion-future}.
 
 \section{Future Work}
-\todo{Pose+Hands, transformer, real-time word boundary detection.}
+\label{sec:conclusion-future}
+
+The scope boundaries and limitations identified above suggest a
+number of concrete extensions that would be natural follow-ups to
+the present thesis. They are listed in increasing order of effort.
+
+\paragraph{Augmenting the landmark front end with body pose.}
+The current word-level pipeline consumes only the 21~hand landmarks
+of MediaPipe Hands, dropped to zero when the hand leaves the frame.
+WLASL signs, however, frequently involve the upper body: signs are
+located in space relative to the chest, the dominant hand often
+references the non-dominant arm, and two-handed signs depend on
+coordinated motion of both hands. Combining MediaPipe Hands with
+the body-pose joints of MediaPipe Pose---as Pose-TGCN and the
+pose-guided RGB fusion of Hosain et~al.~\cite{hosain2021fusion} do at
+the body level---would add this missing context at a near-zero
+inference cost on the mobile target, because both extractors
+already run on-device. A direct comparison between the present
+hands-only landmark stream and a Pose+Hands stream, with the rest
+of the architecture held fixed, is the most immediate extension.
+
+\paragraph{Replacing the recurrent temporal model with a
+transformer encoder.}
+Section~\ref{sec:related-temporal} surveyed the move from recurrent
+to transformer-based temporal models on WLASL, with the Sign
+Pose-Based Transformer of Boh\'a\v{c}ek and
+Hr\'uz~\cite{bohacek2022spoter} reaching 63.18\% Top-1 on the
+100-class subset using pose-only inputs. A natural follow-up to the
+present bidirectional LSTM is to replace its recurrent backbone
+with a comparably sized pose transformer encoder, training and
+evaluating it under the same signer-disjoint protocol and the same
+on-device export pipeline. The interesting question is not whether
+a transformer can match an LSTM on this dataset---the prior
+literature suggests it can---but whether the resulting model
+remains within the mobile size and latency budget that motivates
+this thesis.
+
+\paragraph{Two-handed handling on the letter task.}
+The landmark-based fingerspelling MLP is trained on a single hand
+and falls back to a zero-vector when no hand is detected. Letters
+that involve two hands in some regional variants, and several of
+the auxiliary classes, would benefit from a model that consumes
+both hands when both are present. This is a small architectural
+change---doubling the input dimension and zero-padding the
+secondary hand---but it would require re-training on a dataset that
+preserves both-hand annotations.
+
+\paragraph{Real-time word boundary detection.}
+The word-level pipeline is evaluated under the WLASL-100 protocol,
+which assumes pre-segmented isolated clips. A usable accessibility
+tool would have to detect the start and end of each sign in a
+continuous signing stream. A lightweight on-device boundary
+detector---e.g.\ a binary classifier over short windows of the
+same landmark stream, or an energy-based segmenter over hand
+velocity---could be inserted in front of the existing word
+classifier without changing the latter. This extension is mostly
+engineering rather than research, but it is the single change with
+the largest impact on perceived usability.
+
+\paragraph{Cross-lingual transfer.}
+Because the landmark front end is independent of the spoken
+language of the signer, the same MLP and LSTM architectures could
+in principle be re-trained on a Turkish Sign Language
+fingerspelling and isolated-sign dataset. Investigating how much
+of the WLASL-100 trained weight can be reused as a warm start,
+versus how much must be re-learned from scratch, would address a
+practical question for Turkish-speaking deaf communities and would
+be a natural continuation of this thesis in a graduate-level
+follow-up.
+
+\paragraph{User study with the intended community.}
+Finally, all of the above extensions are technical. The single
+extension that would have the highest impact on whether the system
+is actually useful is a field evaluation with deaf and
+hard-of-hearing participants. Such a study would measure not
+classification accuracy but task success---can the participant
+fingerspell a name and have the application recognise it, can a
+hearing interlocutor follow a 100-word vocabulary exchange---and
+would produce design feedback (camera framing prompts, confidence
+display, error-recovery affordances) that no offline benchmark can
+provide.

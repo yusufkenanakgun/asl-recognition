@@ -93,9 +93,9 @@ def plot_confusion_matrix(cm, classes, save_path):
                 xticklabels=classes, yticklabels=classes,
                 annot_kws={'size': 8})
 
-    plt.xlabel('Tahmin Edilen', fontsize=12)
-    plt.ylabel('Gerçek', fontsize=12)
-    plt.title('Confusion Matrix (%) - Test Seti', fontsize=14)
+    plt.xlabel('Predicted', fontsize=12)
+    plt.ylabel('True', fontsize=12)
+    plt.title('Confusion Matrix (%) — EfficientNet-B0, test set', fontsize=14)
     plt.xticks(rotation=45, ha='right')
     plt.yticks(rotation=0)
     plt.tight_layout()

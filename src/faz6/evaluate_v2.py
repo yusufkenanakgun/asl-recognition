@@ -100,9 +100,9 @@ def plot_confusion(cm: np.ndarray, classes: list[str], out_path: Path, top_n: in
         xticklabels=classes, yticklabels=classes,
         annot_kws={"size": 7}, cbar_kws={"label": "%"},
     )
-    plt.xlabel("Tahmin")
-    plt.ylabel("Gerçek")
-    plt.title(f"Confusion Matrix — Top {top_n} sınıf (% normalize)")
+    plt.xlabel("Predicted")
+    plt.ylabel("True")
+    plt.title(f"Confusion Matrix — Top {top_n} classes (% normalised)")
     plt.xticks(rotation=45, ha="right")
     plt.yticks(rotation=0)
     plt.tight_layout()

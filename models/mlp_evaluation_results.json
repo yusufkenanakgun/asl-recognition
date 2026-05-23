@@ -4,8 +4,8 @@
   "model_size_mb": 0.2445,
   "test_accuracy": 99.38,
   "test_samples": 9610,
-  "fps": 91650.5,
-  "ms_per_sample": 0.0109,
+  "fps": 95148.6,
+  "ms_per_sample": 0.0105,
   "per_class_metrics": {
     "A": {
       "precision": 0.996996996996997,

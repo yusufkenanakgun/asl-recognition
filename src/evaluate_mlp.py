@@ -77,13 +77,13 @@ def plot_confusion_matrix(cm, classes, save_path):
 
     cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis] * 100
 
-    sns.heatmap(cm_normalized, annot=True, fmt='.1f', cmap='Greens',
+    sns.heatmap(cm_normalized, annot=True, fmt='.1f', cmap='Blues',
                 xticklabels=classes, yticklabels=classes,
                 annot_kws={'size': 8})
 
-    plt.xlabel('Tahmin Edilen', fontsize=12)
-    plt.ylabel('Gerçek', fontsize=12)
-    plt.title('Confusion Matrix (%) - MLP Landmark Model - Test Seti', fontsize=14)
+    plt.xlabel('Predicted', fontsize=12)
+    plt.ylabel('True', fontsize=12)
+    plt.title('Confusion Matrix (%) — Landmark MLP, test set', fontsize=14)
     plt.xticks(rotation=45, ha='right')
     plt.yticks(rotation=0)
     plt.tight_layout()

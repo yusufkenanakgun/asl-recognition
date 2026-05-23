@@ -1,23 +1,207 @@
 \chapter{Related Work}
 \label{ch:related-work}
 
-% [DEV] Force all seed references to render so the bibliography page is
-% testable. Remove this once real \cite{} calls appear in the prose.
-\nocite{*}
-
-\todo{Literature review across image-based, landmark-based, temporal, and mobile-deployment work.}
+This chapter surveys the prior work on which the present thesis builds.
+Section~\ref{sec:related-image} reviews image-based recognition systems
+that classify static signs from individual video frames.
+Section~\ref{sec:related-landmark} turns to landmark-based methods, which
+replace pixel-level inputs with explicit hand and body keypoints.
+Section~\ref{sec:related-temporal} surveys temporal models for
+word-level recognition on the WLASL benchmark, covering recurrent,
+three-dimensional convolutional, and transformer-based approaches.
+Section~\ref{sec:related-mobile} discusses what is known about deploying
+such models on mobile devices. Section~\ref{sec:related-position} closes
+the chapter by situating the contribution of this thesis within the
+surveyed landscape.
 
 \section{Image-Based Sign Language Recognition}
-\todo{ResNet, EfficientNet, ASL Alphabet baselines.}
+\label{sec:related-image}
+
+Early work on automatic sign language recognition often treated each
+video frame as an independent image-classification problem, relying on
+deep convolutional backbones pretrained on ImageNet to discriminate
+static handshapes such as the letters of the American Sign Language
+fingerspelling alphabet. The recent deep-learning survey of Rastgoo
+et~al.~\cite{rastgoo2021slr} groups these approaches under the broader
+umbrella of vision-based SLR and notes that, while convolutional
+networks excel at frame-level appearance modelling, they cannot in
+themselves capture the temporal dynamics that distinguish many
+word-level signs.
+
+The choice of backbone in this image-based line of work has tracked the
+wider object-recognition literature. Convolutional families such as
+ResNet remain common baselines, but recent work increasingly adopts
+compound-scaled architectures. EfficientNet~\cite{tan2019efficientnet},
+in particular, achieves competitive ImageNet accuracy with an
+order-of-magnitude fewer parameters than earlier networks: its B0
+variant reaches 76.3\% Top-1 with only 5.3 million parameters. This
+favourable accuracy-versus-cost trade-off motivates its use as the
+static-frame backbone of the present work
+(Chapter~\ref{ch:implementation}).
+
+Image-based pipelines remain useful for fingerspelling and isolated
+static signs, but for word-level recognition---where motion, handshape
+transitions, and two-handed coordination jointly carry meaning---they
+must be combined with explicit temporal modelling. The next two
+sections survey the two complementary strategies that have emerged:
+replacing or augmenting the raw image with hand and body landmarks
+(Section~\ref{sec:related-landmark}), and modelling temporal context
+over the resulting frame-level representations
+(Section~\ref{sec:related-temporal}).
 
 \section{Landmark-Based Approaches}
-\todo{MediaPipe Hands, Pose+Hands fusion.}
+\label{sec:related-landmark}
+
+Image-based recognition is sensitive to background clutter,
+illumination, signer appearance, and camera viewpoint. A complementary
+line of work therefore reduces each frame to a small set of anatomical
+keypoints---typically the joints of the hands and upper body---and
+treats sign recognition as a problem over compact pose trajectories
+rather than raw pixels. This shift has two practical consequences: the
+input dimensionality drops by several orders of magnitude, and the
+resulting representation factors out most appearance-related nuisance
+variation, which in turn makes models more portable across signers and
+recording conditions.
+
+The de~facto extractor in this line of work is MediaPipe Hands of
+Zhang et~al.~\cite{zhang2020mediapipe}, which delivers 21
+three-dimensional landmarks per detected hand together with a
+handedness label and a presence confidence score, in real time and on
+commodity hardware. Its combination of accuracy, latency, and
+on-device support has made it the default front end for many recent
+sign-recognition pipelines, including the present work, which uses the
+two-dimensional projections of these landmarks as its sole input
+modality.
+
+Pure landmark-only pipelines are not the only way to use pose
+information. A complementary strategy is to keep the raw image but
+use detected keypoints as a spatial guide for feature pooling. The
+Fusion-3 method of Hosain et~al.~\cite{hosain2021fusion}, for example,
+retains an Inflated 3D ConvNet RGB backbone and uses body-pose joints
+to pool spatio-temporal feature maps from several depths of the
+network, fusing the resulting pose-pooled classifiers with the
+original 3D logits to reach 75.67\% Top-1 accuracy on WLASL-100. Such
+hybrid systems achieve high accuracy at the cost of running a 3D
+convolutional video backbone alongside the pose extractor; for the
+mobile deployment target of this work that cost is prohibitive, which
+motivates the landmark-only design choice revisited in
+Section~\ref{sec:related-position}.
 
 \section{Temporal Modeling for Word-Level Recognition}
-\todo{LSTM, GRU, I3D, transformer-based methods on WLASL.}
+\label{sec:related-temporal}
+
+Word-level sign recognition is distinguished from fingerspelling by the
+central role of motion: handshape transitions, two-handed coordination,
+and trajectory shape jointly disambiguate signs that look identical in
+any single frame. Models in this regime therefore have to integrate
+information across an entire video clip, and the design space splits
+cleanly into three families: recurrent networks built on top of
+frame-level features, three-dimensional convolutional networks that
+operate directly on video tensors, and more recent transformer-based
+architectures that apply self-attention along the time axis.
+
+The standard benchmark for evaluating these families is the Word-Level
+American Sign Language dataset of Li et~al.~\cite{li2020wlasl}, which
+provides four nested subsets of 100, 300, 1{,}000, and 2{,}000 sign
+classes. The original WLASL paper accompanies the dataset with three
+baselines that span the three families: a VGG-GRU pipeline that feeds
+per-frame CNN features into a recurrent network, a Pose-TGCN that
+applies a temporal graph-convolutional network over extracted body
+pose joints, and an Inflated 3D ConvNet operating on the raw video.
+On the smallest, hundred-class subset that anchors the comparisons in
+this thesis (Chapter~\ref{ch:test-results}), these three baselines
+reach 25.97\%, 55.43\%, and 65.89\% Top-1 accuracy respectively.
+
+Recurrent networks remain a natural fit for variable-length sign
+sequences. The Long Short-Term Memory unit of Hochreiter and
+Schmidhuber~\cite{hochreiter1997lstm} introduced the constant-error
+carousel and multiplicative input and output gates that allow gradient
+information to flow over long time steps without vanishing, and
+Schuster and Paliwal~\cite{schuster1997bidirectional} showed that
+running such a recurrent unit in both temporal directions and
+concatenating the resulting hidden states yields strictly more
+contextual information per frame. The two-layer bidirectional LSTM
+that this thesis runs on top of MediaPipe landmarks
+(Chapter~\ref{ch:implementation}) is a direct instance of this
+combination.
+
+A second line of work pushes the recognition accuracy of
+three-dimensional convolutional video backbones on WLASL by importing
+additional supervision from outside the dataset itself. The TK-3D
+ConvNet of Li et~al.~\cite{li2020transferring} retains the Inflated 3D
+ConvNet backbone but augments it with weakly labelled sign clips
+harvested from subtitled news broadcasts, then aligns the news domain
+with the WLASL domain through a coarse classifier and a prototypical
+memory of class centroids. The resulting model reaches 77.55\% Top-1
+on WLASL-100, more than ten percentage points above the plain I3D
+baseline. The improvement comes at the cost of a heavyweight 3D
+convolutional pipeline plus a cross-domain training stage, both of
+which assume RGB video input.
+
+The most recent strand replaces both recurrence and three-dimensional
+convolution with self-attention over pose sequences. The Sign
+Pose-Based Transformer of Boh\'a\v{c}ek and
+Hr\'uz~\cite{bohacek2022spoter} feeds body and hand keypoint
+trajectories into a transformer encoder--decoder and reaches 63.18\%
+Top-1 on WLASL-100 without ever touching a pixel of the original
+video. This result demonstrates that, with a strong sequence model, a
+pose-only pipeline can be competitive with mid-range RGB systems,
+which is the regime in which the present work also sits.
 
 \section{Mobile Deployment of Sign Language Models}
-\todo{TFLite, NCNN, on-device benchmarks.}
+\label{sec:related-mobile}
+
+Despite the steady accuracy gains reviewed above, very little of the
+word-level sign-recognition literature reports on-device inference
+benchmarks on the kind of consumer hardware that an accessibility tool
+would actually run on. The reason is largely structural: the strongest
+published systems on WLASL-100, namely TK-3D
+ConvNet~\cite{li2020transferring} and
+Fusion-3~\cite{hosain2021fusion}, both rely on Inflated 3D ConvNet
+backbones whose runtime cost and memory footprint make them poorly
+suited to commodity smartphones, even before adding the secondary pose
+extractor that Fusion-3 requires or the cross-domain training pipeline
+that TK-3D presumes. Landmark-only systems are, by construction, far
+cheaper to evaluate at inference time---the input dimensionality is
+bounded by a handful of keypoints rather than a full video
+tensor---but the published landmark-based pipelines, including
+SPOTER~\cite{bohacek2022spoter}, report accuracy on desktop hardware
+rather than latency, energy, or model-size figures on a mobile
+device. The recent survey of Rastgoo
+et~al.~\cite{rastgoo2021slr} likewise treats deployment as a brief
+practical note rather than as a primary evaluation axis.
+
+This thesis takes the opposite emphasis. Because the target deployment
+platform is a consumer Android smartphone
+(Chapter~\ref{ch:implementation}), the recognition pipeline is
+constrained from the outset to a lightweight on-device inference
+runtime with a small model footprint, and the test-results chapter
+(Chapter~\ref{ch:test-results}) reports model size and on-device
+throughput alongside Top-1 accuracy on WLASL-100. We are not aware of
+a directly comparable published on-device WLASL-100 benchmark on
+commodity mobile hardware, which itself motivates the experimental
+contribution of this work.
 
 \section{Position of This Work}
-\todo{One-paragraph delta vs. literature.}
+\label{sec:related-position}
+
+The present thesis occupies the corner of the design space that the
+surveyed literature has explored least systematically: word-level
+American Sign Language recognition driven entirely by MediaPipe hand
+landmarks, evaluated on the WLASL-100 subset, and deployed end-to-end
+on a consumer Android smartphone. Relative to the strongest reported
+methods on this subset---the cross-domain TK-3D ConvNet of Li
+et~al.~\cite{li2020transferring} and the pose-guided Fusion-3 of
+Hosain et~al.~\cite{hosain2021fusion}---the design accepts a sizable
+Top-1 accuracy gap (Chapter~\ref{ch:test-results}) in exchange for
+discarding the RGB 3D convolutional pipeline that both systems
+require. Relative to the pose-only transformer baseline of
+Boh\'a\v{c}ek and Hr\'uz~\cite{bohacek2022spoter}, the pipeline
+differs in two respects: the temporal model is a bidirectional LSTM
+rather than a transformer encoder--decoder, and the evaluation
+explicitly reports on-device latency and model size alongside Top-1
+accuracy. The resulting contribution is therefore not a new accuracy
+record on WLASL-100, but a demonstration that a landmark-only,
+mobile-deployable pipeline can be evaluated on the same benchmark
+under the same protocol, with all of its accuracy, footprint, and
+latency trade-offs reported openly.

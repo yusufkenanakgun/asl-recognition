@@ -148,7 +148,7 @@
     "macro_f1": 0.4458,
     "weighted_f1": 0.4513,
     "model_size_mb": 5.514,
-    "inference_fps": 534.4,
-    "inference_ms_per_sample": 1.871
+    "inference_fps": 535.4,
+    "inference_ms_per_sample": 1.868
   }
 }

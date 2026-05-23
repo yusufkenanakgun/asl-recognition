@@ -30,7 +30,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.cse492.aslrecognition.R
 import com.cse492.aslrecognition.ui.theme.AppColors
@@ -39,6 +41,8 @@ import com.cse492.aslrecognition.ui.theme.Dimens
 @Composable
 fun AboutCard() {
     var expanded by remember { mutableStateOf(true) }
+    val uriHandler = LocalUriHandler.current
+    val githubUrl = stringResource(R.string.home_about_github_url)
 
     Column(
         modifier = Modifier
@@ -99,7 +103,13 @@ fun AboutCard() {
                 )
                 Spacer(Modifier.height(14.dp))
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { uriHandler.openUri(githubUrl) }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Icon(
                         imageVector = Icons.Outlined.Link,
                         contentDescription = null,
@@ -111,6 +121,7 @@ fun AboutCard() {
                         text = stringResource(R.string.home_about_github),
                         style = MaterialTheme.typography.bodyMedium,
                         color = AppColors.Teal,
+                        textDecoration = TextDecoration.Underline,
                         modifier = Modifier.weight(1f),
                     )
                 }

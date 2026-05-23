@@ -1,16 +1,116 @@
 \chapter{Introduction}
 \label{ch:introduction}
 
-\todo{Motivation, problem statement, scope, contributions, thesis structure.}
-
 \section{Motivation}
-\todo{Sign language as communication barrier; demand for accessible AI tools.}
+\label{sec:intro-motivation}
+
+Sign languages are the primary means of everyday communication for
+tens of millions of deaf and hard-of-hearing people worldwide, and
+they are linguistically as expressive and as fully developed as any
+spoken language. They are nevertheless under-served by mainstream
+consumer technology: voice assistants, captioning systems, and
+translation tools all assume an acoustic input channel that is, by
+definition, unavailable to the populations sign languages serve. The
+resulting communication barrier between signing and non-signing
+communities has not been closed even by the widespread availability of
+camera-equipped smartphones.
+
+Recent advances in computer vision, particularly on-device pose
+estimation and compact deep-learning models, have made automatic sign
+language recognition---once a research topic accessible only on
+workstation-class hardware---a plausible candidate for consumer
+accessibility tools. Several published systems now reach competitive
+accuracy on standard benchmarks, but the literature has so far
+emphasised accuracy over deployability; off-the-shelf systems with
+state-of-the-art numbers rarely come with model-size or on-device
+latency figures, and the gap between competitive on a server and
+usable on a phone remains wide. The present thesis is motivated by
+this gap.
 
 \section{Problem Statement}
-\todo{Two recognition tasks (letters, words), deployment constraint.}
+\label{sec:intro-problem}
+
+This thesis addresses isolated American Sign Language recognition in
+two complementary regimes that together cover most of the input an
+everyday accessibility tool would have to handle:
+
+\begin{enumerate}
+  \item \textbf{Letter (fingerspelling) recognition:} given a single
+        video frame of a static hand pose, classify it as one of the
+        29 classes of the ASL Alphabet dataset (the 26 English
+        letters together with the three auxiliary
+        \emph{del}, \emph{space}, and \emph{nothing} classes). This
+        task is dominated by static handshape and corresponds to the
+        spelling out of proper nouns and loanwords.
+  \item \textbf{Word-level recognition:} given a short video clip of
+        a signer producing one isolated sign, classify it as one of
+        the 100 most frequent signs of the Word-Level American Sign
+        Language (WLASL) dataset. This task is dominated by motion,
+        handshape transitions, and two-handed coordination.
+\end{enumerate}
+
+In both regimes the system must run end-to-end on a consumer Android
+smartphone with no server-side inference. This deployability
+constraint is treated not as an afterthought but as a primary design
+axis: every architectural decision is evaluated against both
+classification accuracy and the resulting model-size and latency
+footprint.
 
 \section{Scope and Contributions}
-\todo{Comparative deployability study framing.}
+\label{sec:intro-scope}
+
+The thesis is framed as a comparative deployability study rather than
+as an accuracy contest. Its scope is deliberately bounded:
+
+\begin{itemize}
+  \item Only the WLASL-100 subset of the WLASL benchmark is used for
+        word-level evaluation; the larger 300, 1{,}000, and 2{,}000
+        class subsets are out of scope.
+  \item Only American Sign Language is considered; other regional
+        sign languages are out of scope.
+  \item Only isolated signs are recognised; continuous sign language
+        translation is out of scope.
+  \item All inference is on-device; no cloud or server-side component
+        is built.
+\end{itemize}
+
+Within this scope the contributions of the thesis are the following.
+
+\begin{enumerate}
+  \item An image-based fingerspelling recogniser built on an
+        EfficientNet-B0 backbone, fine-tuned on the ASL Alphabet
+        dataset and exported to a lightweight on-device inference
+        runtime.
+  \item A landmark-based fingerspelling recogniser built on a
+        compact multilayer perceptron over MediaPipe hand keypoints,
+        evaluated on the same ASL Alphabet split as the image-based
+        recogniser so that the two letter-task pipelines can be
+        compared directly.
+  \item A landmark-based word-level recogniser, in which MediaPipe
+        Hands landmarks are fed into a two-layer bidirectional LSTM,
+        trained and evaluated on WLASL-100 under the dataset's
+        published protocol.
+  \item A reproducible evaluation that reports Top-1 accuracy, model
+        size, and on-device throughput side by side, and situates the
+        resulting accuracy--footprint trade-off against published
+        WLASL-100 baselines
+        (Chapter~\ref{ch:test-results}).
+\end{enumerate}
 
 \section{Thesis Outline}
-\todo{One paragraph mapping the remaining chapters.}
+\label{sec:intro-outline}
+
+The remainder of this document is organised as follows.
+Chapter~\ref{ch:related-work} surveys prior work on image-based,
+landmark-based, and temporal sign recognition, and on the mobile
+deployment of such systems.
+Chapter~\ref{ch:analysis-design} formalises the recognition problem
+and presents the high-level design of the proposed two-track
+pipeline.
+Chapter~\ref{ch:implementation} describes how the design is realised
+end-to-end, from data preparation through training to on-device
+export. Chapter~\ref{ch:test-results} reports the quantitative
+evaluation, including the WLASL-100 baseline comparison and the
+on-device measurements. Chapter~\ref{ch:conclusion} summarises the
+findings, discusses the limitations of the current system, and
+outlines directions for future work.

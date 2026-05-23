@@ -26,8 +26,9 @@ phone with no dedicated AI accelerator.
 The training pipeline is implemented entirely in Python 3.10 inside a virtual
 environment. PyTorch~2.6 with the CUDA~12.4 build provides the model and
 optimizer code, \texttt{torchvision}~0.21 supplies the EfficientNet-B0
-backbone with its ImageNet weights, and Google's MediaPipe~0.10.32 handles
-hand-landmark extraction. OpenCV~4.13 is used to decode video files and to
+backbone with its ImageNet weights, and Google's
+MediaPipe~Hands~0.10.32~\cite{zhang2020mediapipe} handles hand-landmark
+extraction. OpenCV~4.13 is used to decode video files and to
 read frames from the webcam during preliminary tests. NumPy and scikit-learn
 cover array handling and metric computation, while Matplotlib and Seaborn
 generate the confusion matrices and learning curves reported in
@@ -115,6 +116,22 @@ Validation and test pipelines share the same resize-and-normalize steps but
 omit augmentation. For the landmark-based letter model, MediaPipe is applied
 once per image and a 63-dimensional vector of joint coordinates is cached
 on disk; details of this stage are given in Section~\ref{sec:impl-landmark}.
+Figure~\ref{fig:impl-asl-samples} reports a small sample of training
+images drawn from the eight classes that exemplify the range of
+handshapes the classifier has to discriminate.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/ch4_asl_alphabet_samples.png}
+\caption{Representative samples from the ASL Alphabet test partition:
+the static handshapes for the letters \textit{A}, \textit{E},
+\textit{M}, \textit{N}, \textit{R}, \textit{V} together with the
+auxiliary classes \texttt{del} and \texttt{space}. All images are
+captured against a uniform background at a fixed distance, which
+contributes to the near-ceiling accuracy reported in
+Chapter~\ref{ch:test-results}.}
+\label{fig:impl-asl-samples}
+\end{figure}
 
 \subsection{WLASL-100 (Word Task)}
 \label{sec:impl-data-wlasl}
@@ -151,6 +168,35 @@ Each frame is then passed through the MediaPipe \textit{HandLandmarker}
 configured with \texttt{num\_hands=2} so that both hands of two-handed signs
 can be recovered. The landmark cache is stored once per dataset version and
 reused across all training runs.
+
+Figure~\ref{fig:impl-wlasl-drink} and
+Figure~\ref{fig:impl-wlasl-mother} illustrate the input that the
+word classifier ultimately consumes: a fixed-length sequence of
+frames sampled uniformly across the active window of a single
+isolated sign. The two examples were chosen to span the
+one-handed and two-handed cases that dominate WLASL-100.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/ch4_wlasl_strip_drink.png}
+\caption{Six evenly-spaced frames from a WLASL clip of the
+one-handed sign \emph{drink}. The dominant hand starts at rest
+and travels to the mouth in a single motion, which the BiLSTM
+sees as a short trajectory in landmark space.}
+\label{fig:impl-wlasl-drink}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/ch4_wlasl_strip_mother.png}
+\caption{Six evenly-spaced frames from a WLASL clip of the
+two-handed sign \emph{mother}. Both hands are active and the
+dominant hand makes thumb contact with the chin; the
+two-channel landmark representation of
+Section~\ref{sec:impl-landmark} is what allows the BiLSTM
+to use both hands jointly.}
+\label{fig:impl-wlasl-mother}
+\end{figure}
 
 Two limitations of the recovered dataset are acknowledged here and
 revisited in the discussion of Chapter~\ref{ch:test-results}. First, the
@@ -294,7 +340,8 @@ The word model is therefore a recurrent network operating on a
 Section~\ref{sec:impl-landmark}: 32 uniformly sampled frames, each frame
 holding the two-handed feature vector with its presence flags.
 
-The architecture is a two-layer bidirectional LSTM with a hidden width of
+The architecture is a two-layer bidirectional~\cite{schuster1997bidirectional}
+LSTM~\cite{hochreiter1997lstm} with a hidden width of
 192 and dropout 0.5 between layers, followed by a fully connected
 head $(384 \rightarrow 128 \rightarrow 100)$ with a ReLU and a second
 dropout step. Bidirectional readout was chosen because ASL words are
@@ -579,7 +626,7 @@ camera permission does not surface as a blank screen or a crash.
 Every result reported in Chapter~\ref{ch:test-results} can be reproduced
 from a clean checkout of the project repository.\footnote{Source code,
 training scripts and trained checkpoints are hosted at
-\url{https://github.com/yusufkenanakgun/ai-isaret-dili}.} Training the
+\url{https://github.com/yusufkenanakgun/asl-recognition}.} Training the
 image classifier requires the ASL Alphabet dataset to be placed in
 \texttt{data/asl\_alphabet/}; the landmark cache used by the MLP and the
 landmark splits are generated from the same images by

@@ -16,7 +16,8 @@
     <string name="home_about_author">Yusuf Kenan Akgün</string>
     <string name="home_about_institution">Yeditepe University</string>
     <string name="home_about_year">2026</string>
-    <string name="home_about_github">github.com/ykakgun/asl-recognition</string>
+    <string name="home_about_github">github.com/yusufkenanakgun/asl-recognition</string>
+    <string name="home_about_github_url">https://github.com/yusufkenanakgun/asl-recognition</string>
     <string name="home_models_title">Models</string>
     <string name="home_datasets_footer">Datasets · ASL Alphabet · WLASL-100</string>
 
