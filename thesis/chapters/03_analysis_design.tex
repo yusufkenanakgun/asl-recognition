@@ -407,21 +407,39 @@ gated on the buffer being full.
 sliding \texttt{SequenceBuffer} accumulates per-frame features
 until the window of 32 frames is full; the ensemble fragment
 expands the classifier call into five seeded inferences whose
-logits are averaged before softmax.}
+logits are averaged before softmax. Post-fill predictions are
+gated by a single-shot lock: the classifier is invoked once after
+the buffer fills, the resulting top-1 label is latched on screen,
+and the buffer is reset only when MediaPipe reports an empty hand
+for eight consecutive frames ($\approx$270~ms). The diagram does
+not draw this lock branch explicitly to keep the main flow legible.}
 \label{fig:design-sequence-word}
 \end{sidewaysfigure}
 
-The buffer-fill phase deserves a brief comment. While the buffer
-is filling---which takes roughly one second at 30~FPS---the system
-shows a sequence-progress overlay rather than a confident
-prediction, so that the user receives feedback that the
-application is alive without being misled by a low-quality early
-classification. Once the buffer is full, the classifier is invoked
-on every subsequent frame, so the effective prediction rate
-matches the camera frame rate after the initial fill. The ensemble
-variant extends the classifier call into a loop over five seeded
-models whose logits are averaged before the softmax; this is the
-structure that Section~\ref{sec:design-algorithm-ensemble} pins
+The buffer-fill phase deserves a brief comment, and the flow around
+it is what differentiates the deployed Words pipeline from a naive
+``classify every frame'' loop. Before frame collection begins, the
+analyzer waits for a 30-frame ($\approx$1~second at 30~FPS)
+\textsf{Get~Ready} countdown that starts as soon as MediaPipe detects
+a hand and resets if the hand leaves the frame; this gives the user
+time to settle into the target sign instead of the buffer absorbing a
+half-formed pose on its first frame. While the 32-frame buffer is
+filling---which then takes roughly another second at 30~FPS---the
+system shows a sequence-progress overlay rather than a confident
+prediction, so that the user receives feedback that the application
+is alive without being misled by a low-quality early classification.
+Once the buffer is full the classifier is invoked once, in a
+\emph{single-shot} mode rather than per frame: if the resulting Top-1
+confidence exceeds a small dead-zone threshold (0.10) the prediction
+is latched on screen and further inferences are suppressed, so that
+the user can read the displayed value without it drifting on
+subsequent frames. The latch releases automatically when MediaPipe
+reports an empty frame for eight consecutive callbacks
+($\approx$270~ms), at which point the buffer is cleared, the countdown
+re-arms, and the system is ready to accept a new sign. The ensemble
+variant extends the (single) classifier call into a loop over five
+seeded models whose logits are averaged before the softmax; this is
+the structure that Section~\ref{sec:design-algorithm-ensemble} pins
 down in pseudo-code.
 
 \subsection{Application Lifecycle}

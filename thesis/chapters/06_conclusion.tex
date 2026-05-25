@@ -2,7 +2,107 @@
 \label{ch:conclusion}
 
 \section{Summary of Contributions}
-\todo{What was built.}
+\label{sec:conclusion-summary}
+
+This thesis delivered an end-to-end American Sign Language
+recognition system that runs entirely on a consumer Android phone
+and meets the qualitative and quantitative criteria fixed in the
+project proposal. The contributions are summarised below in the
+order in which they are developed in the preceding chapters.
+
+\paragraph{Two complementary letter classifiers.}
+Chapter~\ref{ch:implementation} described the design and training of
+two ASL fingerspelling classifiers that occupy opposite ends of the
+size and speed trade-off. The image-based EfficientNet-B0 reaches
+\SI{100}{\percent} Top-1 accuracy on the 13\,050-image ASL Alphabet
+test partition; the landmark-based MLP, which consumes the
+63-dimensional MediaPipe Hands output, reaches \SI{99.38}{\percent}
+Top-1 on the detector-recoverable subset of the same partition while
+shipping in a \SI{0.24}{MB} checkpoint, \(\sim\)65$\times$ smaller
+than the image network. Section~\ref{sec:results-qualitative}
+demonstrated that on a budget Android device the relative ordering
+of the two classifiers \emph{inverts}: the MLP retains
+\SI{100}{\percent} accuracy on both test devices while the image
+network drops to \SI{92.9}{\percent} on the entry-level TECNO due to
+camera-pipeline sensitivity. The thesis therefore makes a concrete
+operational argument for shipping a landmark-based variant on the
+letter task, not just on the word task where the literature already
+endorses it.
+
+\paragraph{A word classifier that clears the acceptance threshold
+with a hands-only feature set.}
+Chapter~\ref{ch:implementation} described a five-seed bidirectional
+LSTM trained on a two-handed 128-dimensional landmark feature stream,
+with sequence augmentation, mixup, and a long-tail weighted sampler.
+The five-seed logit-averaging ensemble reached \SI{56.22}{\percent}
+Top-1 and \SI{81.09}{\percent} Top-5 on the WLASL-100 test partition
+(Table~\ref{tab:results-words-seeds}), clearing the proposal's hard
+acceptance threshold of \SI{40}{\percent} Top-1 by \SI{16}{\percent}
+percentage points and reaching within four points of the stretch
+target of \SI{60}{\percent}. Section~\ref{sec:results-words-literature}
+positioned this number in the WLASL-100 literature: a hands-only
+landmark model competitive with pose-based methods (Pose-TGCN,
+SPOTER) at a fraction of their input footprint.
+
+\paragraph{An incremental ablation that explains the gain from
+\SI{20}{\percent} to \SI{60}{\percent}.}
+The V2 word classifier was not produced by a single design choice but
+by a six-step trajectory documented in
+Table~\ref{tab:results-ablation}. The dominant single contribution is
+the data-and-architecture bundle that introduced WLASL frame-window
+cropping, two-hand extraction with presence flags, and sequence-level
+augmentation (+27.33 validation points). The
+\texttt{WeightedRandomSampler} (+6.99 points), the increase in mixup
+intensity from $\alpha=0.2$ to $\alpha=0.4$ (+4.53 points), and the
+five-seed ensemble (+1.23 validation points, +4.08 test points
+relative to the per-seed mean) closed the gap to the stretch
+target. The ablation is reusable as a recipe for related landmark-based
+sequence classification problems on small datasets.
+
+\paragraph{An on-device Android application that exposes all four
+classifiers.}
+Chapter~\ref{ch:implementation} described a CameraX-driven Android
+application that runs the four classifiers through TensorFlow Lite
+with the XNNPACK CPU delegate, displays a Top-3 prediction panel and
+a self-reported FPS/latency badge, and recovers from MediaPipe's
+cold-start timestamp anomaly through a volatile guard around
+\texttt{detectAsync}. The Words tab implements the single-shot lock
+state machine described in Section~\ref{sec:impl-android-pipeline}:
+a \(\sim\)1~s pre-collection countdown, single inference after the
+buffer fills, on-screen latching of the result, and automatic
+release on an eight-frame hand-down signal. No cloud inference, no
+network connectivity, and no server-side component is required at
+inference time.
+
+\paragraph{An eight-cell on-device performance characterisation.}
+Section~\ref{sec:results-on-device} reported FPS and latency for
+each of the four classifiers on two phones: the entry-level
+TECNO SPARK 20C (Helio G36) and the flagship Xiaomi 15T Pro
+(Dimensity 9400+). The headline result is that, after the
+GPU delegate was removed for cold-start stability, the cost of
+CPU-only execution is invisible on the flagship (Ensemble at
+\SI{30}{FPS} / \SI{80}{ms}) and prohibitive on the entry-level
+device (Ensemble at \SI{17}{FPS} / \SI{665}{ms}). The matrix
+produces a concrete deployment guideline: on entry-level
+hardware only the landmark MLP is interactive; on flagship
+hardware all four classifiers are usable and model selection
+reduces to the offline accuracy / size trade-off.
+
+\paragraph{A two-device manual evaluation that bounds the offline
+{$\rightarrow$} on-device gap.}
+Section~\ref{sec:results-qualitative} reported a one-trial-per-class
+manual test of the letter classifiers on both devices (29 trials per
+cell, 28 measurable) and of the word classifiers on the Xiaomi (100
+trials per model). The single-user OOD gap relative to the offline
+test partitions was at most seven percentage points for the letter
+classifiers and \SIrange{7}{14}{\percent} points for the word
+classifiers, with both word classifiers clearing their manual-test
+acceptance thresholds (\SI{38.0}{\percent} single, \SI{49.0}{\percent}
+ensemble) and a structured set of attractor classes
+(\texttt{white}, \texttt{walk}, \texttt{drink}, \texttt{full})
+identified as the dominant failure mode. The manual test therefore
+provides the empirical evidence behind the deployability claim that
+motivates the thesis.
 
 \section{What Was Not Done}
 \label{sec:conclusion-not-done}
@@ -40,7 +140,7 @@ implementation and evaluation chapters.
         natural-language sentences are out of scope.
   \item \textbf{No cloud or server-side inference component was
         built.} All recognition is performed on the consumer
-        Android device, using the exported PyTorch Mobile
+        Android device, using the exported TensorFlow Lite
         artefacts. The system does not call any remote API at
         inference time and does not require network connectivity.
         Server-side training, ensembling, or re-ranking---common
@@ -72,13 +172,12 @@ the thesis by design. This section lists the residual limitations
 of \emph{what was actually built}: properties of the delivered
 system that constrain how its measurements should be interpreted
 and where its applicability ends. They are grouped into
-architectural limitations, which follow from design choices, and
+architectural limitations, which follow from design choices,
 data-side limitations, which follow from the public datasets the
-system was trained on. Performance-side limitations
-(throughput drops on weaker hardware, accuracy under naturalistic
-camera conditions) depend on the on-device measurements of
-Section~\ref{sec:results-on-device} and are discussed alongside
-those numbers rather than repeated here.
+system was trained on, and performance-side limitations, which
+follow from the on-device measurements of
+Section~\ref{sec:results-on-device} and the manual evaluation of
+Section~\ref{sec:results-qualitative}.
 
 \paragraph{Hands-only landmark stream.}
 Both landmark-based classifiers consume the 21~hand-landmark
@@ -163,6 +262,67 @@ meaningful. A real accessibility tool would have to add a
 segmentation stage in front of the classifier, an extension that
 is identified as a high-impact item in
 Section~\ref{sec:conclusion-future}.
+
+\paragraph{Asymmetric latency cost of CPU-only execution on
+entry-level hardware.}
+To eliminate a cold-start \texttt{MediaPipeException} in the
+\texttt{LIVE\_STREAM} path of MediaPipe Hands, the deployed Android
+build runs all four classifiers on the CPU through XNNPACK and does
+not enable the TensorFlow Lite GPU delegate
+(Section~\ref{sec:results-on-device-cpu}). The cost of this decision
+is invisible on flagship hardware---on the Xiaomi 15T Pro all four
+classifiers ran at \SI{30}{FPS} with end-to-end latencies of at most
+\SI{90}{ms}---but it is prohibitive on entry-level hardware. On the
+TECNO SPARK 20C, EfficientNet-B0 and the BiLSTM single model both
+exceeded \SI{200}{ms} mean latency and the five-seed ensemble
+reached \SI{665}{ms} (Table~\ref{tab:on-device-words}), at which
+point the application is no longer interactive. The trade-off taken
+for build stability is therefore not uniform across the deployment
+spectrum: it is free on flagship phones and disqualifying for the
+ensemble on budget phones. A future build that exposes a per-device
+delegate choice (GPU on devices where the cold-start path is stable,
+CPU elsewhere) would partly recover this cost, but the present
+thesis does not include that work.
+
+\paragraph{Camera-pipeline sensitivity of the image-based letter
+classifier.}
+The manual test
+(Section~\ref{sec:results-qualitative-letters}) revealed a behavior
+that the offline test partition did not. EfficientNet-B0, which
+reaches \SI{100}{\percent} on the offline letter test set, drops to
+\SI{92.9}{\percent} on the entry-level TECNO and stays at
+\SI{100}{\percent} on the Xiaomi. The two errors on the TECNO
+(\textit{D}~$\rightarrow$~\textit{K/R} and
+\textit{K}~$\rightarrow$~\textit{W}) involve hand shapes that the
+landmark MLP classified correctly on the same device with full
+confidence; their probable cause is the budget phone's image-signal
+processing pipeline (sharper highlights, harsher white-balance
+correction, slight motion blur) interacting with a pixel-based
+backbone that was trained on the Kaggle ASL Alphabet dataset's
+controlled-indoor imagery. The landmark abstraction discards
+precisely this kind of camera-conditioned variation. The practical
+consequence is that the image classifier's offline-vs-deployed
+accuracy gap is itself device-conditioned, and a deployment that
+guarantees image-network accuracy across the budget tier would
+require either a camera-aware retraining set or a runtime fallback
+to the landmark variant.
+
+\paragraph{Single-user OOD ceiling on the manual evaluation.}
+The manual evaluation of Section~\ref{sec:results-qualitative} was
+conducted by a single human signer (the author). One signer cannot
+sample the population of hand morphologies, signing styles,
+fingerspelling speeds and ambient camera conditions that a real
+deployment would encounter, so the manual-test accuracy numbers are
+not representative samples of production accuracy in either
+direction. They are useful for two narrower purposes: verifying
+that the proposal's qualitative criterion (``the recognised letter
+or word appears on screen'') is satisfied in real use, and bounding
+the offline-to-on-device gap on a single OOD draw. A
+representative production accuracy number would require a
+multi-signer evaluation that the present scope did not include,
+and is the user-study item listed in
+Section~\ref{sec:conclusion-not-done} and revisited as the highest-impact
+follow-up in Section~\ref{sec:conclusion-future}.
 
 \section{Future Work}
 \label{sec:conclusion-future}

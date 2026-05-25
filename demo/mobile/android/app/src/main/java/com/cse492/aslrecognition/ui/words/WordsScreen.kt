@@ -26,6 +26,7 @@ import com.cse492.aslrecognition.inference.ClassificationResult
 import com.cse492.aslrecognition.inference.ModelType
 import com.cse492.aslrecognition.ui.components.CameraSurface
 import com.cse492.aslrecognition.ui.components.CameraTabScaffold
+import com.cse492.aslrecognition.ui.components.CountdownOverlay
 import com.cse492.aslrecognition.ui.components.FpsBadge
 import com.cse492.aslrecognition.ui.components.LandmarkOverlay
 import com.cse492.aslrecognition.ui.components.ModelToggle
@@ -59,6 +60,7 @@ private fun WordsStage() {
     val result by vm.result.collectAsState()
     val selectedModel by vm.selectedModel.collectAsState()
     val fillCount by vm.fillCount.collectAsState()
+    val countdownRemaining by vm.countdownRemainingFrames.collectAsState()
 
     Box(
         modifier = Modifier
@@ -99,6 +101,8 @@ private fun WordsStage() {
         WordsResultPanel(
             fillCount = fillCount,
             seqLen = vm.seqLen,
+            countdownRemaining = countdownRemaining,
+            countdownTotal = vm.countdownTotalFrames,
             result = result,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -112,6 +116,8 @@ private fun WordsStage() {
 private fun WordsResultPanel(
     fillCount: Int,
     seqLen: Int,
+    countdownRemaining: Int,
+    countdownTotal: Int,
     result: ClassificationResult?,
     modifier: Modifier = Modifier,
 ) {
@@ -122,6 +128,10 @@ private fun WordsResultPanel(
             .padding(horizontal = 20.dp, vertical = 16.dp),
     ) {
         when {
+            countdownRemaining > 0 -> CountdownOverlay(
+                remainingFrames = countdownRemaining,
+                totalFrames = countdownTotal,
+            )
             fillCount < seqLen -> SequenceProgressOverlay(filled = fillCount, total = seqLen)
             result == null || result.top3.isEmpty() -> {
                 // Buffer doldu ama ilk inference daha gelmedi (kısa süreli).

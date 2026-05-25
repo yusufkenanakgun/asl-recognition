@@ -1,7 +1,36 @@
 \chapter*{\"Ozet}
 \addcontentsline{toc}{chapter}{\"Ozet}
 
-\todo{T\"urk\c{c}e \"ozet -- yakla\c{s}{\i}k 200 kelime.}
+Bu tez, t\"um\"uyle bir t\"uketici Android telefon \"uzerinde
+\c{c}al{\i}\c{s}an u\c{c}tan uca bir Amerikan \.I\c{s}aret Dili
+(ASL) tan{\i}ma sistemi sunmaktad{\i}r. \.Iki t\"umleyici g\"orev
+ele al{\i}n{\i}r: ASL Alphabet veri k\"umesinin 29 s{\i}n{\i}f{\i}
+\"uzerinden parmak ile harf tan{\i}ma ve WLASL-100 veri
+k\"umesinin 100 kelimelik s\"ozda\u{g}arc{\i}\u{g}{\i} \"uzerinden
+kelime tan{\i}ma. Harf g\"orevi i\c{c}in iki s{\i}n{\i}fland{\i}r{\i}c{\i}
+e\u{g}itilip kar\c{s}{\i}la\c{s}t{\i}r{\i}lm{\i}\c{s}t{\i}r: ham
+g\"or\"unt\"u kesitlerini girdi olarak alan bir EfficientNet-B0 ve
+MediaPipe ile \c{c}{\i}kar{\i}lan 21 el i\c{s}aret noktas{\i}n{\i}
+girdi olarak alan, kompakt bir \c{c}ok-katmanl{\i} alg{\i}lay{\i}c{\i}
+(MLP). Ayr{\i}lm{\i}\c{s} test b\"ol\"um\"unde s{\i}ras{\i}yla
+\%100 ve \%99{,}38 Top-1 do\u{g}rulu\u{g}una ula\c{s}m{\i}\c{s}lar,
+landmark tabanl{\i} modelin a\u{g}{\i}rl{\i}\u{g}{\i} 0{,}24 MB
+boyutunda kalm{\i}\c{s}t{\i}r. Kelime g\"orevi i\c{c}in
+\c{c}ift-elli 128 boyutlu landmark \"oznitelik dizisi \"uzerine
+\c{c}ift-y\"onl\"u bir LSTM e\u{g}itilmi\c{s}; be\c{s} farkl{\i}
+ba\c{s}lang{\i}c\c{c}{\i} ortalayan b\"ut\"unleme (ensemble)
+WLASL-100 test k\"umesinde \%56{,}22 Top-1 ve \%81{,}09 Top-5
+de\u{g}erlerine ula\c{s}m{\i}\c{s}, proje \"onerisinin koydu\u{g}u
+\%40 Top-1 kabul e\c{s}i\u{g}ini 16 puan a\c{s}m{\i}\c{s}t{\i}r.
+D\"ort s{\i}n{\i}fland{\i}r{\i}c{\i} TensorFlow Lite'a aktar{\i}lm{\i}\c{s}
+ve CameraX ile MediaPipe Hands \"uzerine kurulu bir Android
+uygulamas{\i}nda da\u{g}{\i}t{\i}lm{\i}\c{s}t{\i}r. B\"ut\c{c}e
+(TECNO SPARK 20C) ve amiral gemisi (Xiaomi 15T Pro) segmentlerini
+kapsayan iki telefonda yap{\i}lan elle de\u{g}erlendirme; cihaz \"uzerinde
+g\"or\"unt\"u i\c{s}leme h{\i}z{\i}n{\i} (FPS), gecikmeyi ve tek
+kullan{\i}c{\i} OOD do\u{g}ruluk fark{\i}n{\i} karakterize etmi\c{s},
+mobil i\c{s}aret dili da\u{g}{\i}t{\i}m{\i} i\c{c}in cihaz-ko\c{s}ullu
+bir model se\c{c}im rehberi \"uretmi\c{s}tir.
 
 \vspace{1cm}
 \noindent\textbf{Anahtar Kelimeler:} i\c{s}aret dili tan{\i}ma, ASL, MediaPipe, EfficientNet, BiLSTM, mobil da\u{g}{\i}t{\i}m, TensorFlow Lite.

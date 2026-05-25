@@ -41,6 +41,8 @@
     <string name="no_hand_subtitle">Waiting for landmarks…</string>
 
     <!-- Words tab -->
+    <string name="words_get_ready_title">Get ready…</string>
+    <string name="words_get_ready_subtitle">Frame collection will start shortly</string>
     <string name="words_collecting_title">Collecting frames…</string>
     <string name="words_collecting_subtitle">Sign continuously for ~1 second</string>
 </resources>

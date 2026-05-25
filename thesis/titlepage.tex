@@ -1,34 +1,34 @@
 % =============================================================================
 % Title page - Yeditepe University CSE492 thesis cover
+% Layout mirrors the Yeditepe sample (ornek-tez/Halil_Ertan_20220702109.pdf):
+% title (uppercase, large, bold) at top; "by" + author + student ID centered
+% mid-upper; "Engineering Project Report" mid-lower; university block at the
+% bottom. The advisor is shown on the approval page, not on the cover.
 % =============================================================================
 \begin{titlepage}
+  \thispagestyle{empty}
   \begin{center}
     \vspace*{1cm}
 
-    {\large \textbf{\MakeUppercase{\thesisuniversity}}}\\[0.3cm]
-    {\large \thesisfaculty}\\[0.2cm]
-    {\large \thesisdepartment}\\[3cm]
+    {\LARGE \bfseries \MakeUppercase{\thesistitle} \par}
 
-    \rule{\linewidth}{0.6pt}\\[0.6cm]
-    {\LARGE \bfseries \thesistitle \par}
-    \vspace{0.6cm}
-    \rule{\linewidth}{0.6pt}\\[2.5cm]
+    \vspace{4cm}
 
-    {\large \textbf{CSE492 -- Engineering Project}}\\[2cm]
+    {\large \textbf{by}}\\[0.4cm]
+    {\large \textbf{\thesisauthor}}\\[0.2cm]
+    {\large \textbf{\thesisid}}
 
-    \begin{flushleft}
-      \hspace{2cm}
-      \begin{tabular}{ll}
-        \textbf{Author:}  & \thesisauthor \\
-                          & Student ID: \thesisid \\[0.5cm]
-        \textbf{Advisor:} & \thesisadvisor \\
-      \end{tabular}
-    \end{flushleft}
+    \vspace{4cm}
+
+    {\large \textbf{Engineering Project Report}}
 
     \vfill
 
-    {\large \thesisyear}\\
-    {\large Istanbul, Turkey}
+    {\large \textbf{\thesisuniversity}}\\[0.15cm]
+    {\large \textbf{\thesisfaculty}}\\[0.15cm]
+    {\large \textbf{\thesisdepartment}}\\[0.15cm]
+    {\large \textbf{\thesisyear}}
 
+    \vspace{0.5cm}
   \end{center}
 \end{titlepage}

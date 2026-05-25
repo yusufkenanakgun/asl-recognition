@@ -133,7 +133,7 @@ first six epochs and validation accuracy saturates at
 \SI{100}{\percent} from epoch~7 onward, which triggered the
 early-stopping criterion at epoch~11. The narrow train--val gap
 indicates that no overfitting developed despite the large
-\num{72 500}-image training partition.}
+\num{60900}-image training partition.}
 \label{fig:results-lc-cnn}
 \end{figure}
 
@@ -395,12 +395,12 @@ Section~\ref{sec:results-words} discusses in detail.}
 \textbf{Step} & \textbf{Added component} & \textbf{Val Top-1 (\%)} & \textbf{$\Delta$} \\
 \midrule
 0 & V1 baseline (single hand, no augmentation)        & 20.00 & --- \\
-1 & + WLASL \texttt{frame\_start}/\texttt{frame\_end} crop & ---   & --- \\
-2 & + two-hand extraction with presence flags         & ---   & --- \\
-3 & + sequence augmentation\textsuperscript{a}        & 47.33 & +27.33 \\
-4 & + mixup ($\alpha=0.2$)                            & ---   & --- \\
-5 & + hidden size 128 $\rightarrow$ 192               & ---   & --- \\
-6 & + time-scaling $\pm 20\,\%$                       & ---   & --- \\
+1 & + WLASL \texttt{frame\_start}/\texttt{frame\_end} crop & (bundled) & (bundled) \\
+2 & + two-hand extraction with presence flags         & (bundled) & (bundled) \\
+3 & + sequence augmentation\textsuperscript{a}        & 47.33     & +27.33 \\
+4 & + mixup ($\alpha=0.2$)                            & (bundled) & (bundled) \\
+5 & + hidden size 128 $\rightarrow$ 192               & (bundled) & (bundled) \\
+6 & + time-scaling $\pm 20\,\%$                       & (bundled) & (bundled) \\
 7 & + \texttt{WeightedRandomSampler}                  & 54.32 & +6.99 \\
 8 & + mixup $\alpha$ 0.2 $\rightarrow$ 0.4            & 58.85 & +4.53 \\
 9 & + five-seed ensemble (logit averaging)            & \textbf{60.08} & +1.23 \\
@@ -531,11 +531,431 @@ future work.
 \section{On-Device Performance}
 \label{sec:results-on-device}
 
-\todo{[After manual test] FPS and latency tables on the Android test
-device.}
+The offline numbers reported in
+Sections~\ref{sec:results-letters}--\ref{sec:results-words} are measured
+on the training GPU and are useful for cross-checking the model against
+the published literature, but they do not characterise the system that
+the proposal actually promised to deliver: an Android application that
+runs the classifiers on-device, displays the recognised letter or word
+and reports its own throughput and latency. This section reports the
+on-device counterparts of those numbers, measured directly on two
+mid-tier Android phones during the manual test described in
+Section~\ref{sec:results-qualitative}.
+
+\subsection{Test Devices and Protocol}
+\label{sec:results-on-device-protocol}
+
+Two phones were used in the manual test. The first, a
+\textbf{TECNO~SPARK 20C}, is an entry-level device built around a
+MediaTek Helio~G36 SoC (8\,nm, 8 ARM Cortex-A53 cores at up to
+\SI{2.2}{\giga\hertz}, 8\,GB RAM, Android~13). It represents the
+budget segment of the Android market on which an accessibility tool
+must remain usable. The second, a \textbf{Xiaomi~15T~Pro}, is a
+2025-generation flagship built around a MediaTek Dimensity~9400+ SoC
+(3\,nm, 1+3+4 cluster topology with an ARM Cortex-X925 prime core,
+12\,GB LPDDR5X RAM, Android~15) and represents the upper end of the
+deployable hardware. Both devices ran the same APK
+(\texttt{./gradlew installDebug}, commit \texttt{b1d5465} plus the
+Words single-shot lock changes of Section~\ref{sec:impl-android-pipeline})
+under matched conditions: daylight illumination from a window, a
+neutral background, and a hand-to-camera distance of
+\SIrange{30}{50}{\centi\metre}. Battery Saver was disabled on both
+devices to prevent CPU throttling from contaminating the measurement.
+
+For each of the four classifiers, the relevant tab of the application
+was opened, a static target (a single letter for the letter models, a
+single fixed word for the word models) was held in front of the camera
+for \SI{60}{\second}, and the on-screen FPS and latency badges were
+read every ten seconds from a screen recording, producing six samples
+per model and device. The badge reports the end-to-end pipeline
+latency measured inside the analyzer: camera frame
+$\rightarrow$ MediaPipe Hands $\rightarrow$ classifier
+$\rightarrow$ UI publication. It is therefore the deployment-relevant
+quantity, not an isolated model-inference number. To avoid a
+device-mismatch confound the letter models were measured on both
+phones; the word models were measured on both phones initially, but
+on the TECNO the ensemble produced latencies that made the application
+unusable (Section~\ref{sec:results-on-device-words}), so the Words
+qualitative test of Section~\ref{sec:results-qualitative} was carried
+out exclusively on the Xiaomi.
+
+\subsection{Letter Models}
+\label{sec:results-on-device-letters}
+
+Table~\ref{tab:on-device-letters} reports the six-sample mean,
+minimum and maximum FPS and latency for the two letter classifiers on
+both devices. Two patterns emerge clearly. On the Xiaomi 15T~Pro both
+classifiers saturate the camera at \SI{30}{FPS} with latencies well
+inside the proposal's non-functional budget (NFR-04, \SI{10}{FPS}
+end-to-end on the offline machine). On the TECNO SPARK~20C only the
+landmark MLP keeps the pipeline within a real-time budget; the
+image-based EfficientNet stays at a respectable \SI{20.7}{FPS}
+average, but the end-to-end latency rises to \SI{203}{ms} mean and
+peaks at \SI{220}{ms}, an order of magnitude higher than its Xiaomi
+counterpart.
+
+\begin{table}[h]
+\centering
+\caption{On-device throughput and latency of the two letter
+classifiers, measured from the in-app FPS/latency badge over a
+60-second window (six samples per cell).}
+\label{tab:on-device-letters}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llccccc}
+\toprule
+\textbf{Model} & \textbf{Device} & \textbf{Mean FPS} & \textbf{Min FPS} & \textbf{Max FPS} & \textbf{Mean lat.\ (ms)} & \textbf{Max lat.\ (ms)} \\
+\midrule
+EfficientNet-B0 & Xiaomi 15T Pro   & 30.0 & 30 & 30 & 35.2 & 40 \\
+EfficientNet-B0 & TECNO SPARK 20C  & 20.7 & 18 & 24 & 203.3 & 220 \\
+Landmark MLP    & Xiaomi 15T Pro   & 30.0 & 30 & 30 & 18.7 & 25 \\
+Landmark MLP    & TECNO SPARK 20C  & 24.5 & 24 & 25 & 21.7 & 30 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+The relative behaviour of the two letter classifiers on the entry-level
+TECNO is the more informative result. The landmark MLP, whose
+checkpoint is only \SI{0.24}{MB} (Table~\ref{tab:results-letters}),
+adds approximately \SI{4}{ms} to the MediaPipe baseline and stays
+within \SI{30}{ms} maximum end-to-end latency on the same hardware on
+which EfficientNet-B0 needs \SI{200}{ms}. The image classifier
+therefore pays the entire on-device cost difference in latency rather
+than in dropped frames: the camera continues to deliver at roughly
+\SI{20}{FPS}, but each frame's prediction lags the visible hand by a
+fifth of a second. For static fingerspelling this lag does not affect
+the correctness of the displayed label (the manual test of
+Section~\ref{sec:results-qualitative} confirms this) but for any
+gesture that involves motion it would be visible.
+
+\subsection{Word Models}
+\label{sec:results-on-device-words}
+
+Table~\ref{tab:on-device-words} reports the equivalent measurements
+for the two word classifiers. On the Xiaomi the single-model variant
+runs at \SI{30}{FPS} with a mean end-to-end latency of \SI{31.7}{ms};
+the five-seed ensemble inflates the model-inference component by the
+expected factor of approximately five, raising mean latency to
+\SI{80}{ms} but leaving the camera-driven FPS unchanged. Both
+configurations are comfortably within an interactive budget on the
+flagship hardware.
+
+\begin{table}[h]
+\centering
+\caption{On-device throughput and latency of the two word
+classifiers (six samples per cell). The TECNO entry for the ensemble
+is the headline result of this section: a five-fold latency
+inflation that is invisible on flagship hardware becomes
+interaction-breaking on the entry-level SoC.}
+\label{tab:on-device-words}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llccccc}
+\toprule
+\textbf{Model} & \textbf{Device} & \textbf{Mean FPS} & \textbf{Min FPS} & \textbf{Max FPS} & \textbf{Mean lat.\ (ms)} & \textbf{Max lat.\ (ms)} \\
+\midrule
+BiLSTM single   & Xiaomi 15T Pro   & 30.0 & 30 & 30 &  31.7 &  40 \\
+BiLSTM single   & TECNO SPARK 20C  & 22.0 & 20 & 24 & 201.7 & 215 \\
+BiLSTM ensemble & Xiaomi 15T Pro   & 30.0 & 30 & 30 &  80.0 &  90 \\
+BiLSTM ensemble & TECNO SPARK 20C  & 17.0 & 14 & 22 & 665.0 & 700 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+On the TECNO the picture changes qualitatively. The single-model
+variant produces \SI{200}{ms} mean latency in the same range as
+EfficientNet-B0 on the same device, and the ensemble inflates this
+fivefold to a mean of \SI{665}{ms} with a peak of \SI{700}{ms}.
+Because the Words pipeline collects a 32-frame buffer before
+inference (Section~\ref{sec:impl-android-pipeline}), a latency in
+this range means that the prediction for a sign arrives roughly two
+thirds of a second after the user has finished producing it; the
+single-shot lock then holds that label until the hand-down release
+fires. In practice this combination is unusable: the user has to
+hold the sign motionless for an unnatural duration and the system
+feels disconnected from the input. The Xiaomi was added to the test
+plan precisely to side-step this confound and obtain a clean reading
+of the word classifiers' accuracy (Section~\ref{sec:results-qualitative})
+on hardware where the latency does not corrupt the user's behavior.
+
+\subsection{Why CPU Execution on the Entry-Level SoC}
+\label{sec:results-on-device-cpu}
+
+The asymmetry between the two devices is not a pure consequence of
+raw SoC performance. During early on-device testing the TFLite GPU
+delegate was evaluated for the image and LSTM classifiers. The
+delegate produced a long initial warm-up (over a second on the
+TECNO) and, more importantly, was implicated in a recurring
+\texttt{MediaPipeException: smaller timestamp than processed
+timestamp} crash on cold start, where MediaPipe's
+\texttt{LIVE\_STREAM} mode received non-monotonic timestamps from
+the first few frames after the camera bound to the analyzer. The
+fix selected for the deployed build was to drop the GPU delegate
+and run all four classifiers on the CPU through XNNPACK, with a
+volatile guard on the last sent timestamp and a try/catch around
+\texttt{detectAsync}. This decision trades a measurable amount of
+peak throughput on supported devices for a build that never crashes
+in the cold-start path.
+
+Table~\ref{tab:on-device-letters} and
+Table~\ref{tab:on-device-words} are therefore not measurements of an
+intrinsic ``ARM phone'' limit; they measure CPU execution of the
+classifiers on the two devices' respective CPU clusters. The
+Dimensity~9400+ absorbs the cost of CPU-only execution invisibly,
+while the Helio~G36 does not. The same decision (stability over
+peak speed) thus has an \emph{asymmetric} cost across the hardware
+spectrum, which is the precise observation that
+Section~\ref{sec:conclusion-limitations} returns to as the
+performance-side limitation of the delivered system.
+
+\subsection{Decision Matrix for Mobile Deployment}
+\label{sec:results-on-device-matrix}
+
+Combining the on-device throughput and latency reported in this
+section with the accuracy numbers of the previous sections produces
+a simple deployment guideline. On an entry-level SoC (Helio~G36 or
+comparable) only the landmark MLP delivers an interactive
+experience; the image classifier remains correct but loses
+responsiveness, the BiLSTM single model is borderline, and the
+ensemble is not usable. On a mid-range or flagship SoC
+(Dimensity~9400+ or comparable) all four classifiers meet their
+budgets and the choice between them collapses back to the
+accuracy/size trade-off captured in
+Tables~\ref{tab:results-letters} and~\ref{tab:results-words-seeds}.
+This device-conditional model selection is the most concrete
+operational outcome of the thesis and is the headline argument for
+including a landmark MLP variant on the letter task at all.
 
 %==============================================================================
 \section{Real-Device Qualitative Evaluation}
 \label{sec:results-qualitative}
 
-\todo{[After manual test] Accuracy under real camera conditions.}
+The on-device performance numbers of the previous section answer
+\emph{how fast} the classifiers run on a phone; this section answers
+\emph{how often they are right} on a phone, under naturalistic
+camera conditions that are systematically out-of-distribution
+relative to the offline test partitions of
+Sections~\ref{sec:results-letters} and~\ref{sec:results-words}. The
+purpose of the experiment is not to produce a new accuracy number to
+compete with the offline results---a single human signer cannot
+sample the variation of the underlying populations---but to verify
+that the proposal's qualitative criterion (``the recognised letter or
+word is written to the screen'') is satisfied in real use, and to
+characterise where the offline numbers are misleading.
+
+\subsection{Protocol}
+\label{sec:results-qualitative-protocol}
+
+A single test user (the author) produced one trial per class for
+each classifier under each device condition. For the letter
+classifiers, this is 29 trials per (model, device) cell, of which 28
+are measurable: the \texttt{nothing} class cannot be evaluated under
+the deployed pipeline because the analyzer does not invoke the
+classifier when MediaPipe Hands fails to detect a hand. For the
+word classifiers, this is 100 trials per model, covering the full
+WLASL-100 vocabulary in the order of the canonical
+\texttt{gloss\_to\_idx.json} mapping. Each trial recorded the Top-1
+label, the Top-1 confidence from the in-app panel, and, when the
+Top-1 was wrong, whether the correct label appeared in the Top-3
+panel as well as which incorrect label the model produced.
+
+Two procedural rules apply throughout. First, the canonical
+fingerspelling pose of each letter was held for three seconds
+before the panel value was recorded, so that the single-shot lock
+of Section~\ref{sec:impl-android-pipeline} settled. Second, on the
+Words tab the per-trial behaviour follows the new lock state
+machine described in Section~\ref{sec:impl-android-pipeline}: if
+the user noticed an erroneous start \emph{before} the buffer
+filled they could lower the hand and re-attempt, but once the
+buffer fill completed and a prediction was latched the trial was
+counted as taken. This rule prevents the protocol from collapsing
+into a best-of-many test that would over-state real-world accuracy.
+
+\subsection{Letter Models, Device-by-Device}
+\label{sec:results-qualitative-letters}
+
+Table~\ref{tab:qual-letters} reports the manual-test accuracy of the
+two letter classifiers on both phones over their 28 measurable
+classes. Three observations frame the result.
+
+\begin{table}[h]
+\centering
+\caption{Manual-test accuracy of the two letter classifiers across
+both devices. The 28 measurable classes exclude the
+\texttt{nothing} class, which the deployed pipeline does not
+classify by design.}
+\label{tab:qual-letters}
+\begin{tabular}{llcccc}
+\toprule
+\textbf{Model} & \textbf{Device} & \textbf{Top-1 (\%)} & \textbf{Top-3 (\%)} & \textbf{Mean conf.\ (\%)} \\
+\midrule
+EfficientNet-B0 & TECNO SPARK 20C  &  92.9 (26/28) & 100.0 & 94.7 \\
+EfficientNet-B0 & Xiaomi 15T Pro   & 100.0 (28/28) & 100.0 & 98.2 \\
+Landmark MLP    & TECNO SPARK 20C  & 100.0 (28/28) & 100.0 & 99.6 \\
+Landmark MLP    & Xiaomi 15T Pro   & 100.0 (28/28) & 100.0 & 100.0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+First, the gap between offline test accuracy and on-device accuracy
+is small for both classifiers. EfficientNet-B0 drops from
+\SI{100}{\percent} on the offline test partition to \SI{92.9}{\percent}
+on the TECNO and remains at \SI{100}{\percent} on the Xiaomi; the
+landmark MLP drops from \SI{99.38}{\percent} offline to a uniform
+\SI{100}{\percent} on both devices. The single-user OOD penalty that
+Section~\ref{sec:results-letters} flagged as the appropriate yardstick
+for production readiness is therefore at most seven percentage points
+on the worst-case (device, model) cell and zero on three of the four
+cells. This is the empirical evidence behind the chapter's claim that
+the letter classifiers are deployment-ready.
+
+Second, the two errors observed on the TECNO with EfficientNet-B0
+were both image-pipeline mistakes rather than handshape
+ambiguities: D was classified as K or R with \SI{60}{\percent}
+confidence and K was classified as W with \SI{40}{\percent}
+confidence. The same hand pose produced clean predictions on the
+Xiaomi with EfficientNet (D at \SI{90}{\percent}, K at
+\SI{85}{\percent} confidence). The landmark MLP did not produce these
+errors on either device. This is the inverse of the offline result:
+in the offline partition the image network was the more accurate
+classifier (\SI{100}{\percent} vs \SI{99.38}{\percent}); in real
+deployment on a budget phone, it is the less accurate of the two.
+The most plausible explanation is that the MediaPipe landmark
+abstraction discards exactly the camera-pipeline noise (sharper or
+softer image-signal processing, white-balance shifts, slight blur)
+to which a pixel-based network is sensitive; the same observation
+underlies the literature consensus on pose-based models for
+on-device sign recognition.
+
+Third, neither classifier degraded gracefully on the
+\texttt{nothing} class because the deployed pipeline does not
+attempt to classify it---the analyzer simply does not invoke the
+classifier when MediaPipe Hands reports an empty frame. This is the
+correct behaviour for an interactive application (no spurious
+predictions when the user's hand is not on screen), but it means the
+on-device evaluation cannot report a number for that class and the
+offline test partition remains the appropriate ground truth for the
+``no hand'' negative.
+
+\subsection{Word Models on the Xiaomi}
+\label{sec:results-qualitative-words}
+
+Table~\ref{tab:qual-words} reports the manual-test accuracy of the
+two word classifiers across the full WLASL-100 vocabulary on the
+Xiaomi. Because the TECNO ensemble latency made trials unproductive
+(Section~\ref{sec:results-on-device-words}), Words trials on the
+TECNO are not reported.
+
+\begin{table}[h]
+\centering
+\caption{Manual-test accuracy of the two word classifiers on the
+WLASL-100 vocabulary (100 trials per model, one trial per class)
+on the Xiaomi 15T Pro. Mean Top-1 confidence is computed over the
+correctly classified subset.}
+\label{tab:qual-words}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Model} & \textbf{Top-1 (\%)} & \textbf{Top-3 (\%)} & \textbf{Mean conf.\ (\%)} \\
+\midrule
+BiLSTM single                & 38.0 & 71.0 & 32.0 \\
+BiLSTM ensemble (x5)         & 49.0 & 72.0 & 29.1 \\
+\midrule
+$\Delta$ (Ensemble $-$ Single) & $+11.0$ & $+1.0$ & $-2.9$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The single-model variant reached \SI{38.0}{\percent} Top-1 against
+its offline test number of \SI{52.14}{\percent} (the five-seed
+mean of Table~\ref{tab:results-words-seeds}); the ensemble reached
+\SI{49.0}{\percent} against its offline test number of
+\SI{56.22}{\percent}. The single-user OOD gap for the word
+classifier is therefore \SI{14}{\percent} points (single) and
+\SI{7}{\percent} points (ensemble), which is the order of magnitude
+the proposal anticipated when it set the manual-test acceptance
+threshold to \SI{35}{\percent} for the single model and
+\SI{40}{\percent} for the ensemble. Both thresholds were cleared,
+the latter by nine percentage points.
+
+Two structural observations are worth recording. The first is the
+shape of the ensemble improvement: it adds eleven Top-1 points
+(\SI{38.0}{\percent}~$\rightarrow$~\SI{49.0}{\percent}) but only one
+Top-3 point (\SI{71.0}{\percent}~$\rightarrow$~\SI{72.0}{\percent}).
+The ensemble is therefore not contributing new correct labels to the
+candidate set; it is re-ranking labels that the single model
+already kept inside its Top-3 panel. This matches the offline
+observation that ensemble decorrelation primarily reduces the
+variance of the argmax rather than expanding the high-confidence
+candidate set, and it bounds the kind of gain a richer aggregation
+strategy could plausibly deliver on this dataset.
+
+The second observation concerns the absolute confidence numbers.
+Mean Top-1 confidence on correctly classified clips is
+\SI{32.0}{\percent} for the single model and \SI{29.1}{\percent} for
+the ensemble, well below the \SI{50}{\percent}--\SI{55}{\percent}
+thresholds that the manual-test plan originally proposed for the
+Words task. The interpretation is methodological rather than a
+failure of the classifier: a 100-way softmax distributes
+probability mass across 100 outputs, and a correctly ranked Top-1
+label can comfortably reach the argmax with absolute mass in the
+\SIrange{20}{40}{\percent} range. The right metric for this
+classifier is the ranking position of the ground truth (Top-1 and
+Top-3 accuracy, both of which cleared the acceptance threshold);
+the absolute confidence value is informative as a sorting signal
+inside the candidate panel but is not directly comparable to the
+binary confidence of a fingerspelling classifier with 29 outputs.
+
+\subsection{Word-Level Confusion Patterns}
+\label{sec:results-qualitative-confusions}
+
+The 51 incorrect Top-1 predictions made by the single model and the
+51 incorrect predictions made by the ensemble were not uniformly
+distributed across the WLASL-100 vocabulary. Both models repeatedly
+collapsed onto a small set of ``attractor'' classes: \texttt{white},
+\texttt{walk}, \texttt{drink}, \texttt{full}, \texttt{same} and
+\texttt{short}. Concretely, the single model predicted
+\texttt{white} for \texttt{who}, \texttt{thin} and \texttt{forget};
+\texttt{walk} for \texttt{change} and \texttt{letter};
+\texttt{drink} for \texttt{orange}, \texttt{fine}, and \texttt{man};
+and \texttt{full} for \texttt{shirt} and three additional trials.
+The ensemble's confusion table follows the same shape, with
+\texttt{walk} additionally absorbing \texttt{time},
+\texttt{clothes} and \texttt{chair}.
+
+Each of these confusion sets has a clear sign-linguistic structure.
+\texttt{white}, \texttt{who} and \texttt{thin} all begin with a
+hand-to-face motion with a single dominant index-finger trajectory;
+\texttt{walk}, \texttt{change}, \texttt{time} and \texttt{chair}
+are all two-handed signs with bilateral lateral motion;
+\texttt{drink}, \texttt{orange}, \texttt{man} and \texttt{fine}
+all use a one-handed motion that begins or ends at the mouth or
+chin. The hands-only feature representation discards exactly the
+fine-grained discriminators (precise contact point on the face,
+non-manual marker, orientation of the inactive hand) that
+distinguish these clusters. The qualitative test therefore
+corroborates the offline error analysis of
+Section~\ref{sec:results-errors}: the model has internalised the
+gross morphology of an ASL sign and fails on the fine-grained
+context that the proposal-stage decision to restrict the input to
+hand landmarks deliberately excluded. The Limitations section of
+Chapter~\ref{ch:conclusion} returns to this point alongside the
+\emph{hands-only landmark stream} bullet.
+
+\subsection{Summary}
+\label{sec:results-qualitative-summary}
+
+Across all four (model, device) configurations the qualitative test
+delivers the result that the proposal asked for: the recognised
+letter or word appears on screen, the application reports its own
+FPS and latency, and the gap between offline and on-device accuracy
+is bounded and explainable. Letters cleared the acceptance
+threshold by a wide margin on both phones; Words cleared the
+acceptance threshold (Top-1~$\geq$~\SI{35}{\percent} single,
+$\geq$~\SI{40}{\percent} ensemble) on the Xiaomi and were not
+measurable on the TECNO for the reasons discussed in
+Section~\ref{sec:results-on-device-words}. Two limitations on the
+delivered system follow directly from these measurements---the
+asymmetric latency cost of CPU-only execution on entry-level
+hardware, and the single-user OOD penalty observed on EfficientNet
+under the TECNO's camera pipeline---and are taken up explicitly in
+Chapter~\ref{ch:conclusion}.

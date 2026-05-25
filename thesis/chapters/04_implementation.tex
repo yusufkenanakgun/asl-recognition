@@ -251,7 +251,10 @@ EfficientNet-B0~\cite{tan2019efficientnet} pretrained on ImageNet, with its
 final classification head replaced by a single fully connected layer that
 maps the 1280-dimensional feature embedding to the 29 ASL Alphabet classes.
 EfficientNet-B0 was chosen because it offers the best size-versus-accuracy
-ratio in its family on commodity hardware: roughly 5.3M parameters,
+ratio in its family on commodity hardware: \num{5.3} million parameters in
+its stock ImageNet configuration (reduced to \num{4.1} million once the
+1000-class head is replaced with a 29-class head, as reported in
+Tables~\ref{tab:impl-training-summary} and~\ref{tab:results-letters}),
 a 224$\times$224 input resolution that matches the dataset's native aspect
 ratio, and a strong ImageNet baseline that transfers well to fine-grained
 hand-shape classification.
@@ -524,8 +527,8 @@ flow. \texttt{FrameAnalyzer}, registered as a CameraX
 \texttt{ImageAnalysis.Analyzer}, forwards each frame to MediaPipe and
 maintains a sliding FPS estimate. \texttt{InferenceManager} owns one
 classifier instance per model type and dispatches landmark or pixel
-input to the currently selected one. Figure placeholders for the high
-level data flow and the per-frame sequence diagram are deferred to
+input to the currently selected one. The high-level data flow and the
+per-frame sequence diagram are presented in
 Chapter~\ref{ch:analysis-design}; the discussion here focuses on
 implementation choices.
 
@@ -555,11 +558,27 @@ interface but their inputs differ:
         marker.
   \item \textbf{BiLSTM single} maintains a 32-frame sliding buffer of
         the two-handed 128-dimensional feature vectors described in
-        Section~\ref{sec:impl-landmark}. Once the buffer is filled the
-        classifier is invoked on every frame, producing a 100-class
-        prediction. While the buffer is filling, a sequence-progress
-        overlay informs the user that the model is not yet making
-        confident predictions.
+        Section~\ref{sec:impl-landmark}. The Words analyzer wraps this
+        buffer in a small state machine designed for manual reading of
+        a single isolated sign rather than continuous classification.
+        When MediaPipe first reports a hand, a 30-frame ($\approx$1~s)
+        \textsf{Get~Ready} countdown is displayed as a full-screen
+        overlay; this countdown resets if the hand leaves the frame
+        before it completes, so that the buffer is never primed with a
+        half-formed pose. The 32-frame buffer then fills while a
+        sequence-progress overlay is shown. Once the buffer is full
+        the classifier is invoked \emph{once}: if the top-1 confidence
+        exceeds a small dead-zone threshold (0.10) the prediction is
+        latched on screen and further classifier calls are suppressed,
+        so that the displayed Top-3 panel does not drift while the
+        user reads it. The latch releases automatically when MediaPipe
+        reports an empty frame for eight consecutive analyzer
+        callbacks ($\approx$270~ms), at which point the buffer is
+        cleared, the countdown re-arms, and a new sign is accepted.
+        Predictions below the dead-zone threshold do not latch: the
+        sliding buffer continues to advance and the next full window
+        is re-evaluated, which is the recovery path when the buffer
+        spans a transition between two signs.
   \item \textbf{BiLSTM ensemble} runs the five seed checkpoints in
         sequence on the same buffer and averages their logits before
         softmax. The five checkpoints are loaded lazily on the first
@@ -619,6 +638,137 @@ permission flow: the first launch displays a permission gate that
 re-prompts on rejection and links to system settings, so that a denied
 camera permission does not surface as a blank screen or a crash.
 
+\subsection{User Interface Walkthrough}
+\label{sec:impl-android-ui-walkthrough}
+
+The figures below illustrate the deployed application on the two
+test phones. All screenshots were captured directly from the
+running APK on the devices listed in
+Section~\ref{sec:results-on-device-protocol}; no post-processing
+beyond cropping the device's status-bar area was applied.
+
+Figure~\ref{fig:ui-entry} shows the application's two entry
+surfaces: the Home screen, which navigates to the Letters and
+Words tabs, and the permission gate that handles a denied camera
+permission. Figures~\ref{fig:ui-letters-tecno}
+and~\ref{fig:ui-letters-xiaomi} show the Letters tab on the
+entry-level TECNO and the flagship Xiaomi respectively;
+representative letters are displayed rather than the full alphabet
+because the layout is identical across classes.
+Figure~\ref{fig:ui-words-drink} shows the three states of the Words
+tab single-shot lock state machine
+(Section~\ref{sec:impl-android-pipeline}) on the WLASL sign
+\texttt{drink}: the \textsf{Get Ready} countdown, the
+sequence-progress overlay during buffer fill, and the latched
+prediction after inference.
+
+\begin{figure}[h]
+\centering
+\begin{subfigure}{0.22\textwidth}
+\centering
+\includegraphics[width=\linewidth]{figures/ui_home.jpg}
+\caption{Home}
+\end{subfigure}\hfil
+\begin{subfigure}{0.22\textwidth}
+\centering
+\includegraphics[width=\linewidth]{figures/ui_permission.jpg}
+\caption{Permission gate}
+\end{subfigure}
+\caption{Entry-surface screens: Home (navigation to Letters and
+Words) and the camera-permission gate displayed on first launch
+or after rejection.}
+\label{fig:ui-entry}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\begin{subfigure}{0.20\textwidth}
+\centering
+\includegraphics[width=\linewidth]{figures/ui_tecno_M.jpg}
+\caption{M}
+\end{subfigure}\hfil
+\begin{subfigure}{0.20\textwidth}
+\centering
+\includegraphics[width=\linewidth]{figures/ui_tecno_N.jpg}
+\caption{N}
+\end{subfigure}\hfil
+\begin{subfigure}{0.20\textwidth}
+\centering
+\includegraphics[width=\linewidth]{figures/ui_tecno_W.jpg}
+\caption{W}
+\end{subfigure}\hfil
+\begin{subfigure}{0.20\textwidth}
+\centering
+\includegraphics[width=\linewidth]{figures/ui_tecno_space.jpg}
+\caption{space}
+\end{subfigure}
+\caption{Letters tab on the entry-level TECNO SPARK 20C. The
+top-right badge reports live FPS and end-to-end latency
+(Section~\ref{sec:results-on-device-letters}); the bottom panel
+displays the Top-3 prediction together with each class's
+confidence.}
+\label{fig:ui-letters-tecno}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\begin{subfigure}{0.20\textwidth}
+\centering
+\includegraphics[width=\linewidth]{figures/ui_xiaomi_A.jpg}
+\caption{A}
+\end{subfigure}\hfil
+\begin{subfigure}{0.20\textwidth}
+\centering
+\includegraphics[width=\linewidth]{figures/ui_xiaomi_B.jpg}
+\caption{B}
+\end{subfigure}\hfil
+\begin{subfigure}{0.20\textwidth}
+\centering
+\includegraphics[width=\linewidth]{figures/ui_xiaomi_L.jpg}
+\caption{L}
+\end{subfigure}\hfil
+\begin{subfigure}{0.20\textwidth}
+\centering
+\includegraphics[width=\linewidth]{figures/ui_xiaomi_X.jpg}
+\caption{X}
+\end{subfigure}
+\caption{Letters tab on the flagship Xiaomi 15T Pro. The on-screen
+layout is identical to the TECNO build; the visual differences
+between the two figures (sharper preview, more consistent colour)
+are attributable to the device's image-signal pipeline, which is
+also the most likely source of the on-device accuracy gap reported
+in Section~\ref{sec:results-qualitative-letters}.}
+\label{fig:ui-letters-xiaomi}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\begin{subfigure}{0.25\textwidth}
+\centering
+\includegraphics[width=\linewidth]{figures/ui_drink_ready.jpg}
+\caption{\textsf{Get Ready} countdown}
+\end{subfigure}\hfil
+\begin{subfigure}{0.25\textwidth}
+\centering
+\includegraphics[width=\linewidth]{figures/ui_drink_collect.jpg}
+\caption{Buffer-fill phase}
+\end{subfigure}\hfil
+\begin{subfigure}{0.25\textwidth}
+\centering
+\includegraphics[width=\linewidth]{figures/ui_drink_result.jpg}
+\caption{Latched prediction}
+\end{subfigure}
+\caption{The three states of the Words tab single-shot lock state
+machine on the WLASL sign \texttt{drink}, captured on the Xiaomi
+15T Pro. (a) MediaPipe first reports a hand and the 30-frame
+\textsf{Get Ready} countdown is shown; (b) the 32-frame
+sliding buffer is filling and a sequence-progress overlay is
+displayed; (c) the buffer is full, the classifier has been invoked
+once and the top-1 prediction is latched on screen until the
+hand-down release fires.}
+\label{fig:ui-words-drink}
+\end{figure}
+
 %==============================================================================
 \section{Reproducibility}
 \label{sec:impl-repro}
@@ -662,9 +812,8 @@ BiLSTM ensemble (5 seeds) & 76--100 each & 9.5 min total & 4.7\,M & 27.55~MB \\
 \end{table}
 
 The on-device application reads the same checkpoints after they are
-converted to TensorFlow~Lite by \texttt{src/convert\_to\_tflite.py}; the
-converted files are committed to
-\texttt{models/tflite/} for direct consumption by the Android project.
-Conversion is deterministic given the PyTorch checkpoints, so the
-mobile-side results in Chapter~\ref{ch:test-results} carry the same
-reproducibility guarantees as the offline numbers.
+converted to TensorFlow~Lite by \texttt{src/convert\_to\_tflite.py};
+the converted files live in \texttt{models/tflite/} for direct
+consumption by the Android project. Conversion is deterministic, so
+the mobile-side results in Chapter~\ref{ch:test-results} match the
+offline numbers exactly.
