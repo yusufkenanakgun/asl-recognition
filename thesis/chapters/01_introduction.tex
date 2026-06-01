@@ -17,9 +17,9 @@ camera-equipped smartphones.
 
 Recent advances in computer vision, particularly on-device pose
 estimation and compact deep-learning models, have made automatic sign
-language recognition---once a research topic accessible only on
-workstation-class hardware---a plausible candidate for consumer
-accessibility tools. Several published systems now reach competitive
+language recognition a plausible candidate for consumer accessibility
+tools. Until recently this was a research topic accessible only on
+workstation-class hardware. Several published systems now reach competitive
 accuracy on standard benchmarks, but the literature has so far
 emphasised accuracy over deployability; off-the-shelf systems with
 state-of-the-art numbers rarely come with model-size or on-device
@@ -74,6 +74,17 @@ as an accuracy contest. Its scope is deliberately bounded:
         is built.
 \end{itemize}
 
+The head-to-head image-vs-landmark comparison promised by the title
+is realised in full at the letter task, where an EfficientNet-B0
+image classifier and a landmark MLP are evaluated on the same
+ASL Alphabet split. At the word task no image-based baseline is
+included, because on-device image-based word recognition
+(e.g.\ I3D, MViT, video-transformer variants) falls outside the
+size and throughput budget that defines this thesis; the
+comparative dimension at the word level is therefore between
+single-seed and five-seed-ensemble variants of the landmark
+BiLSTM rather than across architectural families.
+
 Within this scope the contributions of the thesis are the following.
 
 \begin{enumerate}
@@ -90,6 +101,12 @@ Within this scope the contributions of the thesis are the following.
         Hands landmarks are fed into a two-layer bidirectional LSTM,
         trained and evaluated on WLASL-100 under the dataset's
         published protocol.
+  \item A WLASL-100 data-recovery pipeline that reconstructs
+        a \num{1465}-clip working corpus from a partially link-rotted
+        public source (a \SI{44}{\percent} increase over the
+        \num{1013}-video Kaggle bundle alone) and a forward-additive
+        ablation that quantifies the resulting gain alongside the
+        extraction-pipeline and training-recipe contributions.
   \item A reproducible evaluation that reports Top-1 accuracy, model
         size, and on-device throughput side by side, and situates the
         resulting accuracy--footprint trade-off against published

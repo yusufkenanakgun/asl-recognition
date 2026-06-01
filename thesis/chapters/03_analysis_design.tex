@@ -14,7 +14,7 @@ evaluation criteria into measurable non-functional requirements;
 Sections~\ref{sec:design-usecase}--\ref{sec:design-sequence} document
 the system from the user, structural and behavioural viewpoints
 respectively; and Section~\ref{sec:design-algorithm} fixes the two
-core algorithms---augmented training and ensemble inference---in
+core algorithms, augmented training and ensemble inference, in
 pseudo-code so that they can be reproduced without reference to a
 particular framework.
 
@@ -33,41 +33,41 @@ mapping from requirement to component is the subject of
 Chapter~\ref{ch:implementation}.
 
 \begin{description}
-  \item[FR-01 --- Image-based letter recognition.] The system shall
+  \item[FR-01: Image-based letter recognition.] The system shall
         classify a single RGB image of a hand into one of the 29
         classes of the ASL Alphabet dataset using a convolutional
         neural network. The output shall include the predicted class
         and a confidence score.
 
-  \item[FR-02 --- Landmark-based letter recognition.] The system
+  \item[FR-02: Landmark-based letter recognition.] The system
         shall provide an alternative letter classifier that consumes
         the 21 hand keypoints extracted by MediaPipe Hands rather
         than the raw image. The classifier shall expose the same
         29-class output interface as FR-01 so that the two pipelines
         can be compared on an equal footing.
 
-  \item[FR-03 --- Word-level recognition.] The system shall
+  \item[FR-03: Word-level recognition.] The system shall
         classify short video clips of isolated ASL signs into one of
         the 100 glosses of the WLASL-100 subset using a temporal
         sequence model over per-frame hand landmarks. The temporal
         model operates on a fixed-length frame window so that its
         inference cost is bounded.
 
-  \item[FR-04 --- On-device mobile demonstration.] The system shall
+  \item[FR-04: On-device mobile demonstration.] The system shall
         host all letter and word classifiers in a mobile application
         that runs on a consumer Android smartphone, captures the
         device camera feed in real time, executes inference on the
         device (no server-side component), and renders the predicted
         sign together with its confidence in the user interface.
 
-  \item[FR-05 --- Comparative evaluation.] The system shall produce
+  \item[FR-05: Comparative evaluation.] The system shall produce
         a reproducible evaluation that reports, for every
         classifier, the metrics specified in the project proposal:
         Top-1 accuracy, Top-5 accuracy, per-class F1 score, confusion
         matrix, frames per second, and serialised model size in
         megabytes.
 
-  \item[FR-06 --- Data and preprocessing pipeline.] The system
+  \item[FR-06: Data and preprocessing pipeline.] The system
         shall implement a deterministic preprocessing pipeline that
         ingests the source datasets, partitions them into training,
         validation and test splits, applies the modality-specific
@@ -124,31 +124,31 @@ optimisation targets, and they are revisited quantitatively in
 Chapter~\ref{ch:test-results}.
 
 \begin{description}
-  \item[NFR-01 --- Real-time on-device inference.] The end-to-end
+  \item[NFR-01: Real-time on-device inference.] The end-to-end
         camera-to-prediction pipeline shall sustain a frame rate
         sufficient for an interactive user experience on a
         mid-range Android device, without offloading any inference
         step to a remote server.
 
-  \item[NFR-02 --- Reportable accuracy.] Each classifier shall be
+  \item[NFR-02: Reportable accuracy.] Each classifier shall be
         accompanied by a held-out test-set evaluation that reports
         Top-1 accuracy, Top-5 accuracy (where the number of classes
         makes this informative), per-class F1 score and a confusion
         matrix.
 
-  \item[NFR-03 --- Reproducible training.] Every reported result
+  \item[NFR-03: Reproducible training.] Every reported result
         shall be reproducible from a documented combination of
         dataset, random seed and hyperparameter configuration.
         Long-running preprocessing steps shall be cached on disk
         and invalidated only when their inputs change.
 
-  \item[NFR-04 --- Graceful handling of detection failure.] When
+  \item[NFR-04: Graceful handling of detection failure.] When
         the landmark extractor fails to find a hand in the input
         frame, the system shall communicate this state to the user
         rather than display a previously cached or random
         prediction, and shall not crash.
 
-  \item[NFR-05 --- Deployable model footprint.] The serialised size
+  \item[NFR-05: Deployable model footprint.] The serialised size
         of each classifier checkpoint shall be reported in
         megabytes alongside its accuracy so that the
         accuracy-versus-footprint trade-off can be evaluated. The
@@ -156,12 +156,12 @@ Chapter~\ref{ch:test-results}.
         classifiers within the storage budget of a typical Android
         installable package.
 
-  \item[NFR-06 --- Modular extensibility.] The training and
+  \item[NFR-06: Modular extensibility.] The training and
         inference pipelines shall be parametric in the number of
         output classes so that adding new fingerspelling or word
         classes does not require structural code changes.
 
-  \item[NFR-07 --- Documented dependencies.] All software
+  \item[NFR-07: Documented dependencies.] All software
         dependencies shall be pinned to specific versions; the
         system shall build and run on a consumer development laptop
         with an NVIDIA GPU, as specified by the proposal hardware
@@ -209,7 +209,7 @@ is the more informative axis to report on.
 \label{sec:design-usecase}
 
 The system exposes four end-user use cases, all of them initiated
-by the same actor---the \emph{Signer}, who points the device camera
+by the same actor: the \emph{Signer}, who points the device camera
 at his or her own hand. Three of the four are recognition cases:
 UC-1 and UC-2 cover fingerspelling under the two competing letter
 classifiers (image-based EfficientNet-B0 and landmark-based MLP),
@@ -219,9 +219,9 @@ mode at runtime; the choice between the single-seed and the
 five-seed ensemble word classifier is exposed through this same
 toggle rather than as a separate user case, since from the
 signer's perspective both produce the same Top-3 prediction
-surface. A fifth, supporting case---``handle no-hand
-frame''---is included in the model because it is the only
-exception path the user can observe from the user interface.
+surface. A fifth, supporting case (``handle no-hand frame'') is
+included in the model because it is the only exception path the user
+can observe from the user interface.
 
 Figure~\ref{fig:design-usecase} shows the resulting use-case
 diagram. The notation follows UML~2.5: the rectangular boundary
@@ -234,7 +234,7 @@ frame.
 \begin{figure}[h]
 \centering
 \includegraphics[width=\textwidth]{figures/ch3_use_case.pdf}
-\caption{Use case diagram of the mobile recognition system. A
+\caption[Use case diagram of the mobile recognition system.]{Use case diagram of the mobile recognition system. A
 single \emph{Signer} actor initiates one of three recognition use
 cases (UC-1 image-based letter, UC-2 landmark-based letter, UC-3
 word) or switches the active recognition mode (UC-4). All three
@@ -247,8 +247,8 @@ in the current frame.}
 Three points about the diagram are worth noting because they recur
 in the architectural and behavioural views below. First, the
 three recognition cases (UC-1, UC-2, UC-3) share the same UI
-surface---the camera preview, the Top-3 panel and the FPS/latency
-badge described in Section~\ref{sec:impl-android-ui}---and differ
+surface (the camera preview, the Top-3 panel and the FPS/latency
+badge described in Section~\ref{sec:impl-android-ui}) and differ
 only in which classifier is wired in behind the segmented model
 toggle exposed by UC-4. Second, the no-hand fallback is a single
 shared exception path: the recovery behaviour (faded prediction
@@ -275,7 +275,7 @@ single block diagram with the checkpoint hand-off marked explicitly.
 \begin{figure}[h]
 \centering
 \includegraphics[width=\textwidth]{figures/ch3_architecture.pdf}
-\caption{End-to-end system architecture. The offline training stack
+\caption[End-to-end system architecture.]{End-to-end system architecture. The offline training stack
 on a workstation produces TFLite checkpoints; the on-device
 inference stack consumes the same checkpoints inside the Android
 application.}
@@ -359,14 +359,14 @@ Letter recognition is a stateless per-frame pipeline: each preview
 frame is processed independently, with no buffer or temporal state
 maintained between frames.
 Figure~\ref{fig:design-sequence-letter} shows the sequence of
-messages exchanged between the participants---\textsf{Signer},
+messages exchanged between the participants (\textsf{Signer},
 camera library, \textsf{FrameAnalyzer}, MediaPipe landmark engine,
-\textsf{InferenceManager} and the UI---for a single frame.
+\textsf{InferenceManager} and the UI) for a single frame.
 
 \begin{sidewaysfigure}
 \centering
 \includegraphics[width=\textwidth]{figures/ch3_sequence_letter.pdf}
-\caption{Sequence diagram of the letter recognition flow for a
+\caption[Sequence diagram of the letter recognition flow.]{Sequence diagram of the letter recognition flow for a
 single preview frame. The \texttt{alt} fragment distinguishes the
 two letter classifiers; the \texttt{opt} fragment captures the
 no-hand fallback path.}
@@ -403,44 +403,35 @@ gated on the buffer being full.
 \begin{sidewaysfigure}
 \centering
 \includegraphics[width=\textwidth]{figures/ch3_sequence_word.pdf}
-\caption{Sequence diagram of the word recognition flow. The
+\caption[Sequence diagram of the word recognition flow.]{Sequence diagram of the word recognition flow. The
 sliding \texttt{SequenceBuffer} accumulates per-frame features
 until the window of 32 frames is full; the ensemble fragment
-expands the classifier call into five seeded inferences whose
-logits are averaged before softmax. Post-fill predictions are
-gated by a single-shot lock: the classifier is invoked once after
-the buffer fills, the resulting top-1 label is latched on screen,
-and the buffer is reset only when MediaPipe reports an empty hand
-for eight consecutive frames ($\approx$270~ms). The diagram does
-not draw this lock branch explicitly to keep the main flow legible.}
+expands the classifier call into the seeded loop of
+Section~\ref{sec:design-algorithm-ensemble}. The post-fill
+single-shot lock is described in the prose of
+Section~\ref{sec:design-sequence-word} and is omitted from the
+diagram to keep the main flow legible.}
 \label{fig:design-sequence-word}
 \end{sidewaysfigure}
 
-The buffer-fill phase deserves a brief comment, and the flow around
-it is what differentiates the deployed Words pipeline from a naive
-``classify every frame'' loop. Before frame collection begins, the
-analyzer waits for a 30-frame ($\approx$1~second at 30~FPS)
-\textsf{Get~Ready} countdown that starts as soon as MediaPipe detects
-a hand and resets if the hand leaves the frame; this gives the user
-time to settle into the target sign instead of the buffer absorbing a
-half-formed pose on its first frame. While the 32-frame buffer is
-filling---which then takes roughly another second at 30~FPS---the
-system shows a sequence-progress overlay rather than a confident
-prediction, so that the user receives feedback that the application
-is alive without being misled by a low-quality early classification.
-Once the buffer is full the classifier is invoked once, in a
-\emph{single-shot} mode rather than per frame: if the resulting Top-1
-confidence exceeds a small dead-zone threshold (0.10) the prediction
-is latched on screen and further inferences are suppressed, so that
-the user can read the displayed value without it drifting on
-subsequent frames. The latch releases automatically when MediaPipe
-reports an empty frame for eight consecutive callbacks
-($\approx$270~ms), at which point the buffer is cleared, the countdown
-re-arms, and the system is ready to accept a new sign. The ensemble
-variant extends the (single) classifier call into a loop over five
-seeded models whose logits are averaged before the softmax; this is
-the structure that Section~\ref{sec:design-algorithm-ensemble} pins
-down in pseudo-code.
+The buffer-fill phase differs from a naive ``classify every frame'' loop
+in four behavioural stages that together make up the single-shot lock. A
+\textsf{Get~Ready} countdown begins as soon as MediaPipe first detects a
+hand and resets if the hand leaves the frame, giving the user time to
+settle into the target sign before frame collection starts. The 32-frame
+buffer then fills under a sequence-progress overlay rather than a
+streaming prediction, so that the user is not misled by a low-quality
+early classification. Once the buffer is full the classifier is invoked
+once, in a \emph{single-shot} mode, and if its Top-1 confidence clears a
+small dead-zone threshold the prediction is latched on screen and
+further inferences are suppressed. The latch releases automatically when
+MediaPipe reports an empty hand for a short fixed number of consecutive
+callbacks, at which point the buffer is cleared and the countdown
+re-arms. The concrete threshold, frame counts and dead-zone value are
+reported with the rest of the implementation in
+Section~\ref{sec:impl-android-pipeline}. The ensemble variant extends
+the (single) classifier call into the seeded loop of
+Section~\ref{sec:design-algorithm-ensemble}.
 
 \subsection{Application Lifecycle}
 \label{sec:design-sequence-state}
@@ -468,7 +459,7 @@ transitions.
 \begin{figure}[h]
 \centering
 \includegraphics[width=\textwidth]{figures/ch3_state.pdf}
-\caption{State diagram of the mobile application. The
+\caption[State diagram of the mobile application.]{State diagram of the mobile application. The
 \texttt{Streaming} state is the steady state in which both
 sequence diagrams of the previous subsections execute.}
 \label{fig:design-state}
@@ -639,8 +630,8 @@ of the non-trivial run-time behaviour. The next chapter takes each
 of these design elements and documents the concrete components,
 libraries and hyperparameters that realise them on the development
 laptop and on the Android test device. Wherever the implementation
-deviates from the design as stated here---most notably in the
+deviates from the design as stated here, most notably in the
 choice of a native Kotlin mobile stack in place of the React
-Native stack suggested by the proposal---the deviation is recorded
+Native stack suggested by the proposal, the deviation is recorded
 explicitly in Chapter~\ref{ch:implementation} together with the
 engineering reason for the change.

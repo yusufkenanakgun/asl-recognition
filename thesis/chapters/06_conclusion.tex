@@ -5,59 +5,120 @@
 \label{sec:conclusion-summary}
 
 This thesis delivered an end-to-end American Sign Language
-recognition system that runs entirely on a consumer Android phone
-and meets the qualitative and quantitative criteria fixed in the
-project proposal. The contributions are summarised below in the
+recognition system that runs entirely on a consumer Android phone.
+It reports the evaluation metrics specified in the project proposal
+(Top-1 and Top-5 accuracy, F1 score, confusion matrix, on-device FPS
+and model footprint) and additionally clears the numeric acceptance
+bars adopted for this thesis as concrete pass/fail targets on top
+of those metrics. The contributions are summarised below in the
 order in which they are developed in the preceding chapters.
 
 \paragraph{Two complementary letter classifiers.}
 Chapter~\ref{ch:implementation} described the design and training of
 two ASL fingerspelling classifiers that occupy opposite ends of the
-size and speed trade-off. The image-based EfficientNet-B0 reaches
-\SI{100}{\percent} Top-1 accuracy on the 13\,050-image ASL Alphabet
-test partition; the landmark-based MLP, which consumes the
-63-dimensional MediaPipe Hands output, reaches \SI{99.38}{\percent}
-Top-1 on the detector-recoverable subset of the same partition while
-shipping in a \SI{0.24}{MB} checkpoint, \(\sim\)65$\times$ smaller
-than the image network. Section~\ref{sec:results-qualitative}
-demonstrated that on a budget Android device the relative ordering
-of the two classifiers \emph{inverts}: the MLP retains
-\SI{100}{\percent} accuracy on both test devices while the image
-network drops to \SI{92.9}{\percent} on the entry-level TECNO due to
-camera-pipeline sensitivity. The thesis therefore makes a concrete
-operational argument for shipping a landmark-based variant on the
-letter task, not just on the word task where the literature already
-endorses it.
+size and speed trade-off: an image-based EfficientNet-B0 and a
+landmark-based MLP that consumes the 63-dimensional MediaPipe Hands
+output and ships in a \SI{0.24}{MB} checkpoint, \(\sim\)65$\times$
+smaller than the image network. On the held-out ASL Alphabet test
+partition the two classifiers reach \SI{100}{\percent} and
+\SI{99.38}{\percent} Top-1 accuracy respectively. Because the
+dataset is single-contributor, uniform-background, and
+fixed-distance, these offline figures are read in this thesis as a
+sanity check that the training pipeline converges and that the
+exported checkpoints preserve accuracy
+(Section~\ref{sec:results-letters}); the actual capability signal
+is sought in the on-device measurements that follow. The offline
+numbers also provide the controlled benchmark against which the
+architectural comparison is made. Because the
+deployability of the system is the central objective of this
+thesis, the offline comparison is paired with an on-device manual
+evaluation
+(Section~\ref{sec:results-qualitative-letters}) that adds a second
+layer of evidence under realistic camera and inference conditions:
+on the entry-level TECNO the image network drops to
+\SI{92.9}{\percent} under the budget phone's camera pipeline while
+the landmark MLP retains \SI{100}{\percent} on both test devices.
+The landmark MLP is the correct deployment choice for the letter
+task on budget hardware: it is more accurate than the image
+network in the on-device manual test where the offline ranking
+inverts, ships in a checkpoint roughly $65\times$ smaller, and
+runs at lower per-frame latency on the same device
+(Section~\ref{sec:results-on-device}). This is a converging
+verdict on three independent axes, not a marginal preference. The
+signer-disjoint generalisation of these classifiers, which the
+random split of the public dataset does not assess, is discussed as
+a limitation in Section~\ref{sec:conclusion-limitations}.
 
-\paragraph{A word classifier that clears the acceptance threshold
+\paragraph{A word classifier that clears the adopted acceptance bar
 with a hands-only feature set.}
 Chapter~\ref{ch:implementation} described a five-seed bidirectional
-LSTM trained on a two-handed 128-dimensional landmark feature stream,
-with sequence augmentation, mixup, and a long-tail weighted sampler.
-The five-seed logit-averaging ensemble reached \SI{56.22}{\percent}
-Top-1 and \SI{81.09}{\percent} Top-5 on the WLASL-100 test partition
-(Table~\ref{tab:results-words-seeds}), clearing the proposal's hard
-acceptance threshold of \SI{40}{\percent} Top-1 by \SI{16}{\percent}
-percentage points and reaching within four points of the stretch
-target of \SI{60}{\percent}. Section~\ref{sec:results-words-literature}
-positioned this number in the WLASL-100 literature: a hands-only
-landmark model competitive with pose-based methods (Pose-TGCN,
-SPOTER) at a fraction of their input footprint.
+LSTM trained on a two-handed 128-dimensional landmark feature stream.
+The word classifier clears the adopted hard acceptance bar. The
+five-seed logit-averaging ensemble reaches \SI{56.22}{\percent}
+Top-1 and \SI{81.09}{\percent} Top-5 on the WLASL-100 test
+partition under its canonical person-mixed split
+(Table~\ref{tab:results-words-seeds}), passing the
+\SI{40}{\percent} Top-1 acceptance threshold by 16.22 percentage
+points; every individual seed in the pool also clears the bar, and
+the paired-bootstrap gain over the per-seed mean of
+\SI{52.14}{\percent} is significant at $p = 0.015$. The role of
+the ensemble at this number is a variance-reduction one and is
+discussed in Section~\ref{sec:results-words}; the person-mixed
+protocol places the offline figure as a literature-comparable
+benchmark point rather than a signer-independent generalization
+estimate (Section~\ref{sec:conclusion-limitations}). Within the
+landmark-only family, the position is owned explicitly: hands-only
+landmark inference lands above the 2020 Pose-TGCN baseline
+(\SI{55.43}{\percent}) but below the contemporaneous hands-only
+PBRC pipeline of Singh et al.~\cite{singh2026pbrc}
+(\SI{60.85}{\percent}, ${-}\SI{4.63}{}$ points) and the
+pose-transformer SPOTER (\SI{63.18}{\percent},
+${-}\SI{6.96}{}$ points). The thesis-level word-task
+contribution is therefore not formulated as an accuracy claim. It
+is the joint same-protocol report: this work is the first
+landmark-only WLASL-100 study to publish on-device latency and a
+megabyte-scale model footprint alongside offline accuracy under
+the canonical protocol
+(Sections~\ref{sec:results-on-device}--\ref{sec:results-qualitative}).
 
-\paragraph{An incremental ablation that explains the gain from
-\SI{20}{\percent} to \SI{60}{\percent}.}
-The V2 word classifier was not produced by a single design choice but
-by a six-step trajectory documented in
-Table~\ref{tab:results-ablation}. The dominant single contribution is
-the data-and-architecture bundle that introduced WLASL frame-window
-cropping, two-hand extraction with presence flags, and sequence-level
-augmentation (+27.33 validation points). The
-\texttt{WeightedRandomSampler} (+6.99 points), the increase in mixup
-intensity from $\alpha=0.2$ to $\alpha=0.4$ (+4.53 points), and the
-five-seed ensemble (+1.23 validation points, +4.08 test points
-relative to the per-seed mean) closed the gap to the stretch
-target. The ablation is reusable as a recipe for related landmark-based
-sequence classification problems on small datasets.
+\paragraph{A forward-additive ablation that decomposes the gain from
+\SI{20}{\percent} to \SI{60}{\percent} into three methodological pillars.}
+The final word classifier was not produced by a single design choice but
+by a nine-step trajectory documented in
+Table~\ref{tab:results-ablation}, in which each modification was
+isolated by retraining three independently seeded models on the same
+WLASL-100 split. The 40-point gain decomposes cleanly into three
+contributions of comparable scientific weight. \emph{Data engineering}
+contributes +16.08 validation points: the yt-dlp-based recovery of 448
+link-rotted videos (\num{1013}\,$\to$\,\num{1465}) is the largest single
+step in the entire table and surfaces dataset-size sensitivity as the
+dominant lever on this WLASL-100 setup. The recovery itself is
+WLASL-specific (it repairs this benchmark's link-rotted YouTube
+manifest rather than introducing a generalisable technique), but the
+finding -- that the recurrent classifier sits at chance plus a
+memorization band under \num{1013} videos and clears 36\,\% with
+\num{1465} -- is the operative takeaway and applies to any future
+study that approaches WLASL-100 from a comparable training budget. The \emph{extraction pipeline}, which adds
+two-hand landmarks with presence flags and WLASL frame-window cropping,
+contributes a further +10.29 points without changing the training
+recipe. The \emph{training-recipe refinements} (light sequence
+augmentation, stronger frame dropout, time-scale, mixup, the long-tail
+\texttt{WeightedRandomSampler}, and the wider hidden state) together
+add the remaining ${\sim}14$ points. The ablation also surfaces a
+methodological detail worth reporting: the wider hidden state is mildly
+negative in isolation ($-1.24$ points) but contributes a $+4.39$-point
+\emph{interaction effect} once the full regularization stack is in
+place (Section~\ref{sec:results-ablation-interaction}), and removing
+it from the full final configuration costs $-6.47$ test points; its
+inclusion in the deployed model is therefore justified by joint
+adoption rather than by a capacity argument alone. The five-seed ensemble reaches
+\SI{60.08}{\percent} on the validation set and \SI{56.22}{\percent} on
+the test set, lifting the five-seed test mean of \SI{52.14}{\percent}
+by a paired-bootstrap significant +4.08 points ($p = 0.015$) while
+remaining statistically indistinguishable from the best single seed on
+the same 201-clip partition (McNemar $p = 1.000$). Together, the table
+and the interaction observation are reusable as a recipe for related
+landmark-based sequence classification problems on small datasets.
 
 \paragraph{An on-device Android application that exposes all four
 classifiers.}
@@ -88,21 +149,24 @@ hardware only the landmark MLP is interactive; on flagship
 hardware all four classifiers are usable and model selection
 reduces to the offline accuracy / size trade-off.
 
-\paragraph{A two-device manual evaluation that bounds the offline
-{$\rightarrow$} on-device gap.}
+\paragraph{A two-device single-user manual evaluation that bounds
+the offline {$\rightarrow$} on-device gap.}
 Section~\ref{sec:results-qualitative} reported a one-trial-per-class
 manual test of the letter classifiers on both devices (29 trials per
 cell, 28 measurable) and of the word classifiers on the Xiaomi (100
 trials per model). The single-user OOD gap relative to the offline
 test partitions was at most seven percentage points for the letter
 classifiers and \SIrange{7}{14}{\percent} points for the word
-classifiers, with both word classifiers clearing their manual-test
-acceptance thresholds (\SI{38.0}{\percent} single, \SI{49.0}{\percent}
-ensemble) and a structured set of attractor classes
+classifiers, with both word classifiers clearing the manual-test
+acceptance bars adopted in Section~\ref{sec:results-words-acceptance}
+(\SI{38.0}{\percent} single, \SI{49.0}{\percent} ensemble) and a
+structured set of attractor classes
 (\texttt{white}, \texttt{walk}, \texttt{drink}, \texttt{full})
-identified as the dominant failure mode. The manual test therefore
-provides the empirical evidence behind the deployability claim that
-motivates the thesis.
+identified as the dominant failure mode. As a single-user
+feasibility probe, the manual test is consistent with the
+deployability claim that motivates the thesis; it is not, on its own,
+a controlled measurement of classifier accuracy under deployment
+conditions.
 
 \section{What Was Not Done}
 \label{sec:conclusion-not-done}
@@ -120,7 +184,7 @@ implementation and evaluation chapters.
         Word-level training and evaluation are restricted to the
         WLASL-100 subset. The larger 300, 1{,}000, and 2{,}000-class
         subsets of the WLASL benchmark are not addressed; the
-        signer-disjoint test protocol, the bidirectional LSTM
+        person-mixed test protocol, the bidirectional LSTM
         backbone, and the on-device export pipeline are evaluated
         only at the 100-class operating point.
   \item \textbf{Sign languages other than ASL were not considered.}
@@ -132,8 +196,8 @@ implementation and evaluation chapters.
         but cross-language transfer is not investigated.
   \item \textbf{Continuous sign language translation was not
         attempted.} Both pipelines classify a single isolated
-        unit---a static letter or a pre-segmented word
-        clip---and produce a class label, not a gloss sequence or a
+        unit, either a static letter or a pre-segmented word clip,
+        and produce a class label rather than a gloss sequence or a
         translation into written language. Co-articulation between
         adjacent signs, automatic temporal segmentation of a
         free-flowing signing stream, and the mapping from gloss to
@@ -143,13 +207,13 @@ implementation and evaluation chapters.
         Android device, using the exported TensorFlow Lite
         artefacts. The system does not call any remote API at
         inference time and does not require network connectivity.
-        Server-side training, ensembling, or re-ranking---common
-        in commercial accessibility tools---is therefore not part
-        of the deliverable.
+        Server-side training, ensembling, or re-ranking, all
+        common in commercial accessibility tools, is therefore not
+        part of the deliverable.
   \item \textbf{Signer-level analysis was not performed.}
         The ASL Alphabet dataset does not expose signer identity in
         its public release, and the WLASL-100 evaluation follows
-        the dataset's published signer-disjoint split as a single
+        the dataset's published person-mixed split as a single
         fixed partition. Per-signer accuracy breakdowns,
         cross-signer adaptation, and few-shot personalisation to a
         new signer are not reported.
@@ -158,8 +222,8 @@ implementation and evaluation chapters.
         present evaluation is purely technical: classification
         accuracy on held-out data and on-device throughput on the
         target hardware. A field study with members of the
-        intended user community---which would be the appropriate
-        next step before any deployment claim---was not within the
+        intended user community would be the appropriate next step
+        before any deployment claim, but it was not within the
         scope of a one-semester senior-project thesis and is left
         to future work.
 \end{itemize}
@@ -200,9 +264,9 @@ Section~\ref{sec:conclusion-future}).
 The landmark-based fingerspelling MLP is trained on the dominant
 hand only; if MediaPipe detects two hands in the frame, only the
 first is consumed and the rest is discarded. This is appropriate
-for the bulk of the ASL Alphabet---most letters use a single
-hand---but it leaves regional two-hand variants and the
-auxiliary classes under-supported. The image-based EfficientNet
+for the bulk of the ASL Alphabet, since most letters use a single
+hand, but it leaves regional two-hand variants and the auxiliary
+classes under-supported. The image-based EfficientNet
 classifier does not have this limitation, since it operates on
 raw pixels, but it correspondingly cannot benefit from the
 explicit two-handed structure that the LSTM word model uses.
@@ -238,17 +302,61 @@ signer in a new room with a new camera. The real-device
 measurements of Section~\ref{sec:results-qualitative} are the
 appropriate ground truth for the latter question.
 
-\paragraph{WLASL-100 person-mixed split.}
-The WLASL-100 evaluation uses the dataset's published canonical
-split, which is person-mixed: the same signer can appear in both
-the train and the test partitions. This is a known property of
-the WLASL benchmark and is shared by all published baselines in
-Table~\ref{tab:results-wlasl-lit}; the relative comparisons in
-that table are therefore on equal terms. The absolute number,
-however, is inflated relative to a stricter signer-disjoint
+\paragraph{WLASL-100 person-mixed split and the unmeasured
+generalization band.}
+This is the headline structural limitation of the present
+evaluation and is stated as such. The WLASL-100 evaluation uses
+the dataset's published canonical split, which is person-mixed:
+the same signer can appear in both the train and the test
+partitions. This is a known property of the WLASL benchmark and
+is shared by all published baselines in
+Table~\ref{tab:results-wlasl-lit}, so the relative comparisons in
+that table are on equal terms. The absolute number, however, is
+inflated by construction relative to a stricter signer-disjoint
 protocol, and a system that reaches \SI{56.22}{\percent} on the
 mixed split should not be assumed to reach the same number on
 data from a signer that the training set has never seen.
+
+Two things were therefore measured cleanly by the word-task
+evaluation of Chapter~\ref{ch:test-results}, and one was not.
+What \emph{was} measured cleanly is, first, a
+protocol-comparable benchmark point against published WLASL-100
+methods on the canonical person-mixed split
+(Section~\ref{sec:results-words-literature}); and second, the
+on-device throughput, latency, and known-sign single-user
+deployability of all four classifiers on two distinct Android
+devices (Sections~\ref{sec:results-on-device} and
+\ref{sec:results-qualitative}). What was \emph{not} measured is
+the signer-independent generalization band of the word
+classifier: the offline figure is an inflated-by-design upper
+bound on the canonical protocol, and the on-device manual test
+is a known-sign single-user upper bound under naturalistic
+camera conditions (the explicit familiarisation step of
+Section~\ref{sec:results-qualitative-protocol} makes this an
+upper bound rather than a representative production-conditions
+sample). The actual signer-independent accuracy lies somewhere
+in the band these two figures bracket, and the present thesis
+does not narrow that band beyond bracketing it. A
+signer-disjoint re-evaluation on a future release of the WLASL
+metadata, paired with the multi-signer field study listed in
+Section~\ref{sec:conclusion-future}, is the appropriate
+follow-up.
+
+\paragraph{Statistical power of the 201-clip word test set.}
+The WLASL-100 canonical test partition contains only 201 clips, so a
+single misclassification moves Top-1 by \SI{0.50}{percentage point}
+and the 95\,\% Wilson binomial confidence interval around any Top-1
+estimate spans roughly \(\pm 7\) points. The per-seed CIs in
+Table~\ref{tab:results-words-seeds} all overlap heavily and the
+ensemble's offline Top-1 is statistically indistinguishable from the
+best single seed on this partition (McNemar $p = 1.000$,
+Section~\ref{sec:results-words}). The ensemble's offline contribution
+is therefore a variance-reduction one (removing the seed-selection
+gamble) rather than a tight absolute-accuracy claim; the on-device
+manual test of Section~\ref{sec:results-qualitative-words} (\(n=100\))
+is the second statistical signal that the present evaluation carries.
+A larger held-out partition would tighten both readings and is
+listed as future work in Section~\ref{sec:conclusion-future}.
 
 \paragraph{Isolated-only word recognition.}
 The word classifier expects a temporally pre-segmented clip
@@ -270,9 +378,10 @@ To eliminate a cold-start \texttt{MediaPipeException} in the
 build runs all four classifiers on the CPU through XNNPACK and does
 not enable the TensorFlow Lite GPU delegate
 (Section~\ref{sec:results-on-device-cpu}). The cost of this decision
-is invisible on flagship hardware---on the Xiaomi 15T Pro all four
+is invisible on flagship hardware: on the Xiaomi 15T Pro all four
 classifiers ran at \SI{30}{FPS} with end-to-end latencies of at most
-\SI{90}{ms}---but it is prohibitive on entry-level hardware. On the
+\SI{90}{ms}. On entry-level hardware, however, the same choice is
+prohibitive. On the
 TECNO SPARK 20C, EfficientNet-B0 and the BiLSTM single model both
 exceeded \SI{200}{ms} mean latency and the five-seed ensemble
 reached \SI{665}{ms} (Table~\ref{tab:on-device-words}), at which
@@ -314,10 +423,20 @@ sample the population of hand morphologies, signing styles,
 fingerspelling speeds and ambient camera conditions that a real
 deployment would encounter, so the manual-test accuracy numbers are
 not representative samples of production accuracy in either
-direction. They are useful for two narrower purposes: verifying
-that the proposal's qualitative criterion (``the recognised letter
-or word appears on screen'') is satisfied in real use, and bounding
-the offline-to-on-device gap on a single OOD draw. A
+direction. A second qualification applies to the Words manual test
+specifically: because the WLASL-100 vocabulary is not part of the
+author's active sign repertoire, each Words trial was preceded by a
+short familiarisation step against the WLASL reference clip, and
+the recorded gesture was the author's best-effort production of
+that reference (Section~\ref{sec:results-qualitative-words}). The
+resulting Words manual-test accuracy therefore measures the
+classifier under a known-sign assumption and constitutes an upper
+bound on the production accuracy that a first-time user without
+this familiarisation would obtain. They are useful for two narrower
+purposes: verifying that the proposal's qualitative criterion
+(``the recognised letter or word appears on screen'') is satisfied
+in real use, and bounding the offline-to-on-device gap on a single
+OOD draw under that known-sign assumption. A
 representative production accuracy number would require a
 multi-signer evaluation that the present scope did not include,
 and is the user-study item listed in
@@ -338,10 +457,11 @@ WLASL signs, however, frequently involve the upper body: signs are
 located in space relative to the chest, the dominant hand often
 references the non-dominant arm, and two-handed signs depend on
 coordinated motion of both hands. Combining MediaPipe Hands with
-the body-pose joints of MediaPipe Pose---as Pose-TGCN and the
-pose-guided RGB fusion of Hosain et~al.~\cite{hosain2021fusion} do at
-the body level---would add this missing context at a near-zero
-inference cost on the mobile target, because both extractors
+the body-pose joints of MediaPipe Pose, in the same spirit as
+Pose-TGCN and the pose-guided RGB fusion of
+Hosain et~al.~\cite{hosain2021fusion} at the body level, would add
+this missing context at a near-zero inference cost on the mobile
+target, because both extractors
 already run on-device. A direct comparison between the present
 hands-only landmark stream and a Pose+Hands stream, with the rest
 of the architecture held fixed, is the most immediate extension.
@@ -355,12 +475,12 @@ Hr\'uz~\cite{bohacek2022spoter} reaching 63.18\% Top-1 on the
 100-class subset using pose-only inputs. A natural follow-up to the
 present bidirectional LSTM is to replace its recurrent backbone
 with a comparably sized pose transformer encoder, training and
-evaluating it under the same signer-disjoint protocol and the same
+evaluating it under the same person-mixed protocol and the same
 on-device export pipeline. The interesting question is not whether
-a transformer can match an LSTM on this dataset---the prior
-literature suggests it can---but whether the resulting model
-remains within the mobile size and latency budget that motivates
-this thesis.
+a transformer can match an LSTM on this dataset, since the prior
+literature suggests it can. The real question is whether the
+resulting model remains within the mobile size and latency budget
+that motivates this thesis.
 
 \paragraph{Two-handed handling on the letter task.}
 The landmark-based fingerspelling MLP is trained on a single hand
@@ -368,18 +488,18 @@ and falls back to a zero-vector when no hand is detected. Letters
 that involve two hands in some regional variants, and several of
 the auxiliary classes, would benefit from a model that consumes
 both hands when both are present. This is a small architectural
-change---doubling the input dimension and zero-padding the
-secondary hand---but it would require re-training on a dataset that
-preserves both-hand annotations.
+change, essentially doubling the input dimension and zero-padding
+the secondary hand, but it would require re-training on a dataset
+that preserves both-hand annotations.
 
 \paragraph{Real-time word boundary detection.}
 The word-level pipeline is evaluated under the WLASL-100 protocol,
 which assumes pre-segmented isolated clips. A usable accessibility
 tool would have to detect the start and end of each sign in a
 continuous signing stream. A lightweight on-device boundary
-detector---e.g.\ a binary classifier over short windows of the
-same landmark stream, or an energy-based segmenter over hand
-velocity---could be inserted in front of the existing word
+detector, for example a binary classifier over short windows of the
+same landmark stream or an energy-based segmenter over hand
+velocity, could be inserted in front of the existing word
 classifier without changing the latter. This extension is mostly
 engineering rather than research, but it is the single change with
 the largest impact on perceived usability.
@@ -399,10 +519,10 @@ follow-up.
 Finally, all of the above extensions are technical. The single
 extension that would have the highest impact on whether the system
 is actually useful is a field evaluation with deaf and
-hard-of-hearing participants. Such a study would measure not
-classification accuracy but task success---can the participant
-fingerspell a name and have the application recognise it, can a
-hearing interlocutor follow a 100-word vocabulary exchange---and
-would produce design feedback (camera framing prompts, confidence
-display, error-recovery affordances) that no offline benchmark can
-provide.
+hard-of-hearing participants. Such a study would measure task success rather than
+classification accuracy. The relevant questions are whether the
+participant can fingerspell a name and have the application recognise
+it, and whether a hearing interlocutor can follow a 100-word
+vocabulary exchange. A study at this level would also produce design
+feedback (camera framing prompts, confidence display, error-recovery
+affordances) that no offline benchmark can provide.

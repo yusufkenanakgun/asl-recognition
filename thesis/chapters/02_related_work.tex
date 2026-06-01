@@ -40,9 +40,10 @@ static-frame backbone of the present work
 (Chapter~\ref{ch:implementation}).
 
 Image-based pipelines remain useful for fingerspelling and isolated
-static signs, but for word-level recognition---where motion, handshape
-transitions, and two-handed coordination jointly carry meaning---they
-must be combined with explicit temporal modelling. The next two
+static signs. For word-level recognition, however, they must be
+combined with explicit temporal modelling, because motion, handshape
+transitions, and two-handed coordination jointly carry the meaning of
+a sign. The next two
 sections survey the two complementary strategies that have emerged:
 replacing or augmenting the raw image with hand and body landmarks
 (Section~\ref{sec:related-landmark}), and modelling temporal context
@@ -55,7 +56,7 @@ over the resulting frame-level representations
 Image-based recognition is sensitive to background clutter,
 illumination, signer appearance, and camera viewpoint. A complementary
 line of work therefore reduces each frame to a small set of anatomical
-keypoints---typically the joints of the hands and upper body---and
+keypoints, typically the joints of the hands and upper body, and
 treats sign recognition as a problem over compact pose trajectories
 rather than raw pixels. This shift has two practical consequences: the
 input dimensionality drops by several orders of magnitude, and the
@@ -162,12 +163,12 @@ backbones whose runtime cost and memory footprint make them poorly
 suited to commodity smartphones, even before adding the secondary pose
 extractor that Fusion-3 requires or the cross-domain training pipeline
 that TK-3D presumes. Landmark-only systems are, by construction, far
-cheaper to evaluate at inference time---the input dimensionality is
-bounded by a handful of keypoints rather than a full video
-tensor---but the published landmark-based pipelines, including
-SPOTER~\cite{bohacek2022spoter}, report accuracy on desktop hardware
-rather than latency, energy, or model-size figures on a mobile
-device. The recent survey of Rastgoo
+cheaper to evaluate at inference time, since their input
+dimensionality is bounded by a handful of keypoints rather than a full
+video tensor. Even so, the published landmark-based pipelines,
+including SPOTER~\cite{bohacek2022spoter}, report accuracy on desktop
+hardware rather than latency, energy, or model-size figures on a
+mobile device. The recent survey of Rastgoo
 et~al.~\cite{rastgoo2021slr} likewise treats deployment as a brief
 practical note rather than as a primary evaluation axis.
 
@@ -177,10 +178,31 @@ platform is a consumer Android smartphone
 constrained from the outset to a lightweight on-device inference
 runtime with a small model footprint, and the test-results chapter
 (Chapter~\ref{ch:test-results}) reports model size and on-device
-throughput alongside Top-1 accuracy on WLASL-100. We are not aware of
-a directly comparable published on-device WLASL-100 benchmark on
-commodity mobile hardware, which itself motivates the experimental
-contribution of this work.
+throughput alongside Top-1 accuracy on WLASL-100.
+
+Recent landmark-only work has explicitly targeted edge devices on the
+same WLASL-100 subset addressed here. Singh
+et~al.~\cite{singh2026pbrc} combine MediaPipe hand landmarks with a
+parallel bidirectional reservoir computing (PBRC) architecture and
+report a Top-1 accuracy of \SI{60.85}{\percent} together with CPU-side
+training and inference times on a workstation, positioning the
+pipeline as suitable for edge deployment without measuring it on a
+mobile device. Parallel activity at the letter task is visible in the
+dual-pipeline Portuguese Sign Language application of Fonseca
+et~al.~\cite{fonseca2025lgp}, which contrasts a TensorFlow~Lite
+MobileNetV2 against a MediaPipe+MLP back end (the latter served from a
+remote endpoint), and in the MobileNet+TFLite Indian Sign Language
+pipeline of Balamurugan et~al.~\cite{balamurugan2025isl}. The
+smartphone-collected ASL fingerspelling dataset
+FSboard~\cite{georg2024fsboard} further documents that the
+smartphone-deployment regime is now treated as a first-class research
+target rather than a niche concern. Relative to this body of work,
+the contribution of the present chapter is the end-to-end on-device
+characterisation of four classifiers (image and landmark $\times$
+letter and word) under a single Android deployment, with throughput
+and latency reported on both a budget and a flagship handset and a
+single-user out-of-distribution gap quantified on each cell; the
+following section locates the resulting design in that landscape.
 
 \section{Position of This Work}
 \label{sec:related-position}
@@ -190,9 +212,9 @@ surveyed literature has explored least systematically: word-level
 American Sign Language recognition driven entirely by MediaPipe hand
 landmarks, evaluated on the WLASL-100 subset, and deployed end-to-end
 on a consumer Android smartphone. Relative to the strongest reported
-methods on this subset---the cross-domain TK-3D ConvNet of Li
+methods on this subset, namely the cross-domain TK-3D ConvNet of Li
 et~al.~\cite{li2020transferring} and the pose-guided Fusion-3 of
-Hosain et~al.~\cite{hosain2021fusion}---the design accepts a sizable
+Hosain et~al.~\cite{hosain2021fusion}, the design accepts a sizable
 Top-1 accuracy gap (Chapter~\ref{ch:test-results}) in exchange for
 discarding the RGB 3D convolutional pipeline that both systems
 require. Relative to the pose-only transformer baseline of
@@ -200,8 +222,18 @@ Boh\'a\v{c}ek and Hr\'uz~\cite{bohacek2022spoter}, the pipeline
 differs in two respects: the temporal model is a bidirectional LSTM
 rather than a transformer encoder--decoder, and the evaluation
 explicitly reports on-device latency and model size alongside Top-1
-accuracy. The resulting contribution is therefore not a new accuracy
-record on WLASL-100, but a demonstration that a landmark-only,
-mobile-deployable pipeline can be evaluated on the same benchmark
-under the same protocol, with all of its accuracy, footprint, and
-latency trade-offs reported openly.
+accuracy. Relative to the contemporaneous landmark-only PBRC of Singh
+et~al.~\cite{singh2026pbrc}, the modelling difference is recurrence
+(a two-layer BiLSTM) versus a parallel echo-state reservoir; the
+evaluation difference is the on-device characterisation on Android
+budget and flagship handsets, which neither PBRC nor any other
+landmark-only WLASL-100 method published to date reports. The resulting contribution is therefore not a new accuracy record
+on WLASL-100 -- the present model trails the closest published
+analogue (PBRC, hands-only MediaPipe) by roughly five points and
+the pose-transformer SPOTER by roughly seven, on the same
+canonical person-mixed split -- but a demonstration that a
+landmark-only, mobile-deployable pipeline can be evaluated on
+that same benchmark under the same protocol with its accuracy,
+footprint and on-device latency all reported jointly, where the
+within-family methods that lead the accuracy column report only
+the first of the three.

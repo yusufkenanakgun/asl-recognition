@@ -31,8 +31,8 @@ from train_v2 import LSTMClassifier, BATCH_SIZE
 
 
 ROOT = Path(__file__).resolve().parents[2]
-DATA_DIR = ROOT / "data" / "faz6_v2" / "landmarks_wlasl100"
-MODEL_DIR = ROOT / "models" / "faz6_v2"
+DEFAULT_DATA_DIR = ROOT / "data" / "faz6_v2" / "landmarks_wlasl100"
+DEFAULT_MODEL_DIR = ROOT / "models" / "faz6_v2"
 
 
 # ---------------------------------------------------------------------------
@@ -113,17 +113,20 @@ def plot_confusion(cm: np.ndarray, classes: list[str], out_path: Path, top_n: in
 # ---------------------------------------------------------------------------
 # Ana akış
 # ---------------------------------------------------------------------------
-def main() -> None:
+def main(ckpt_dir: Path = DEFAULT_MODEL_DIR, data_dir: Path = DEFAULT_DATA_DIR) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Device: {device}")
     if device.type == "cuda":
         print(f"GPU: {torch.cuda.get_device_name(0)}")
 
+    print(f"Ckpt klasörü: {ckpt_dir}")
+    print(f"Veri klasörü: {data_dir}")
+
     # Veri yükle
     print("\nTest verisi yükleniyor...")
-    X_test = np.load(DATA_DIR / "X_test.npy")
-    y_test = np.load(DATA_DIR / "y_test.npy")
-    with (DATA_DIR / "gloss_to_idx.json").open() as f:
+    X_test = np.load(data_dir / "X_test.npy")
+    y_test = np.load(data_dir / "y_test.npy")
+    with (data_dir / "gloss_to_idx.json").open() as f:
         gloss_to_idx = json.load(f)
     idx_to_gloss = {v: k for k, v in gloss_to_idx.items()}
     classes = [idx_to_gloss[i] for i in range(len(gloss_to_idx))]
@@ -134,8 +137,8 @@ def main() -> None:
     X_test_t = torch.from_numpy(X_test).float()
 
     # Checkpoint'leri bul
-    ensemble_ckpts = sorted(MODEL_DIR.glob("best_lstm_seed*.pth"))
-    single_ckpt = MODEL_DIR / "best_lstm.pth"
+    ensemble_ckpts = sorted(ckpt_dir.glob("best_lstm_seed*.pth"))
+    single_ckpt = ckpt_dir / "best_lstm.pth"
     has_ensemble = len(ensemble_ckpts) >= 2
 
     print(f"\nBulunan modeller:")
@@ -182,8 +185,8 @@ def main() -> None:
 
         # Confusion matrix (ensemble)
         cm = confusion_matrix(y_test, ens_m["preds"], labels=np.arange(num_classes))
-        plot_confusion(cm, classes, MODEL_DIR / "confusion_matrix.png", top_n=25)
-        print(f"  Confusion matrix: {MODEL_DIR / 'confusion_matrix.png'}")
+        plot_confusion(cm, classes, ckpt_dir / "confusion_matrix.png", top_n=25)
+        print(f"  Confusion matrix: {ckpt_dir / 'confusion_matrix.png'}")
 
         # En çok karıştırılan sınıflar
         cm_nodiag = cm.copy()
@@ -221,22 +224,27 @@ def main() -> None:
             "top_confusions": [{"true": t, "pred": p, "count": n} for t, p, n in top_conf[:20]],
         }
 
-    # 2) Tek model (eğer mevcutsa)
-    if single_ckpt.exists():
-        print("\n--- Tek model değerlendirmesi ---")
-        model, _ = load_model(single_ckpt, device)
+    # 2) Tek model FPS ölçümü için bir checkpoint seç (single_ckpt veya seed0)
+    perf_ckpt = single_ckpt if single_ckpt.exists() else (
+        ensemble_ckpts[0] if ensemble_ckpts else None
+    )
+    if perf_ckpt is not None:
+        print(f"\n--- Tek model değerlendirmesi ({perf_ckpt.name}) ---")
+        model, perf_chk = load_model(perf_ckpt, device)
         logits = predict_logits(model, X_test_t, device)
         single_m = compute_metrics(logits, y_test, num_classes)
         print(f"  top1={single_m['top1_acc']:.2f}%  top5={single_m['top5_acc']:.2f}%  "
               f"macro F1={single_m['macro_f1']:.3f}")
-        size_mb = single_ckpt.stat().st_size / (1024 * 1024)
+        size_mb = perf_ckpt.stat().st_size / (1024 * 1024)
 
-        # FPS ölçümü (tek model, batch 1)
+        # FPS ölçümü (ckpt'in kendi hyperparametreleriyle)
+        hp = perf_chk["hyperparameters"]
         model_perf = LSTMClassifier(
-            input_size=128, hidden_size=192, num_layers=2,
-            num_classes=num_classes, dropout=0.5, bidirectional=True,
+            input_size=hp["input_size"], hidden_size=hp["hidden_size"],
+            num_layers=hp["num_layers"], num_classes=num_classes,
+            dropout=hp["dropout"], bidirectional=hp["bidirectional"],
         ).to(device).eval()
-        x_one = torch.randn(1, 32, 128, device=device)
+        x_one = torch.randn(1, 32, hp["input_size"], device=device)
         # warmup
         with torch.no_grad():
             for _ in range(20):
@@ -267,7 +275,7 @@ def main() -> None:
         print(f"  Inference: {fps:.0f} FPS ({ms:.2f} ms/sample) on {device}")
 
     # Kaydet
-    out = MODEL_DIR / "evaluation_results.json"
+    out = ckpt_dir / "evaluation_results.json"
     with out.open("w", encoding="utf-8") as f:
         json.dump(results, f, indent=2, ensure_ascii=False)
 
@@ -276,9 +284,18 @@ def main() -> None:
     print("=" * 70)
     print(f"Özet → {out}")
     if has_ensemble:
-        print(f"🎯 ENSEMBLE Top-1: {results['ensemble']['top1_acc']:.2f}% "
+        print(f"ENSEMBLE Top-1: {results['ensemble']['top1_acc']:.2f}% "
               f"(proposal acceptance ≥%40, hedef ≥%60)")
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    p = argparse.ArgumentParser()
+    p.add_argument("--ckpt-dir", type=str, default=None,
+                   help="Checkpoint klasörü (varsayılan: models/faz6_v2)")
+    p.add_argument("--data-dir", type=str, default=None,
+                   help="Test data klasörü (varsayılan: data/faz6_v2/landmarks_wlasl100)")
+    args = p.parse_args()
+    ckpt_dir = Path(args.ckpt_dir) if args.ckpt_dir else DEFAULT_MODEL_DIR
+    data_dir = Path(args.data_dir) if args.data_dir else DEFAULT_DATA_DIR
+    main(ckpt_dir=ckpt_dir, data_dir=data_dir)

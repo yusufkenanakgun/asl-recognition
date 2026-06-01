@@ -1,0 +1,11 @@
+{
+  "individual_val_acc": [
+    49.79,
+    50.21,
+    49.79
+  ],
+  "individual_mean": 49.93,
+  "ensemble_val_acc": 51.44,
+  "ensemble_gain_vs_best_single": 1.23,
+  "num_models": 3
+}

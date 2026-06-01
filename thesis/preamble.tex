@@ -85,7 +85,7 @@
 \renewcommand{\headrulewidth}{0.4pt}
 \renewcommand{\footrulewidth}{0pt}
 
-% Chapter ilk sayfasında "plain" stil — sadece sayfa numarası
+% Chapter ilk sayfasında "plain" stil, sadece sayfa numarası
 \fancypagestyle{plain}{%
   \fancyhf{}
   \fancyfoot[C]{\thepage}
@@ -106,6 +106,11 @@
 \renewcommand{\cftchapfont}{\bfseries}
 \renewcommand{\cftchappagefont}{\bfseries}
 \setlength{\cftbeforechapskip}{6pt}
+% LoF/LoT girişleri arası boşluk: çok cümleli caption'ların ikinci sayfaya
+% taşmamasını sağlayacak kadar sıkı, fakat sayfa altında geniş boşluk
+% bırakmayacak kadar ferah.
+\setlength{\cftbeforefigskip}{8pt}
+\setlength{\cftbeforetabskip}{8pt}
 
 % --- Bibliography (IEEE style) --------------------------------------------
 \usepackage{csquotes}
@@ -116,8 +121,8 @@
   maxbibnames=99,
 ]{biblatex}
 \addbibresource{references.bib}
-\setlength{\bibitemsep}{0pt}
-\AtBeginBibliography{\small}
+\setlength{\bibitemsep}{6pt}
+\AtBeginBibliography{\normalsize}
 
 % --- Hyperlinks (en sonda olmalı) -----------------------------------------
 \usepackage[
@@ -132,7 +137,7 @@
 
 % --- Custom commands ------------------------------------------------------
 \newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
-\newcommand{\thesistitle}{AI-Powered Sign Language Recognition System: A Comparative Study of Image-Based and Landmark-Based Approaches}
+\newcommand{\thesistitle}{On-Device American Sign Language Recognition: A Comparative Study of Image- and Landmark-Based Approaches for Mobile Deployment}
 \newcommand{\thesisauthor}{Yusuf Kenan Akg\"un}
 \newcommand{\thesisid}{20210702010}
 \newcommand{\thesisadvisor}{Bet\"ul Arslan}

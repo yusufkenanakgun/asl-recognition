@@ -20,6 +20,16 @@
 \pagenumbering{roman}
 
 \input{titlepage.tex}
+% titlepage ortamı sayacı 1'e resetler; kapağı "i" sayıp boş sayfayı "ii",
+% onay sayfasını "iii" olarak numaralandırmak için sayacı 2'ye alıyoruz.
+\setcounter{page}{2}
+
+% Boş sayfa (kapakla onay sayfası arasında, ciltleme için) — numara gizli
+\thispagestyle{empty}
+\null
+\clearpage
+
+\input{chapters/00_approval.tex}
 
 \input{chapters/00_acknowledgements.tex}
 \clearpage
@@ -30,6 +40,8 @@
 \input{chapters/00_ozet.tex}
 \clearpage
 
+% Front-matter listeleri tek satır aralığıyla bas (LoF 3. sayfaya taşmasın)
+\begin{singlespace}
 \tableofcontents
 \clearpage
 
@@ -38,6 +50,7 @@
 
 \listoftables
 \clearpage
+\end{singlespace}
 
 % --- Main matter (Arabic page numbers) ------------------------------------
 \pagenumbering{arabic}

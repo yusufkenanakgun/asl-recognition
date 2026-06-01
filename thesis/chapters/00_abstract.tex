@@ -1,6 +1,7 @@
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{Abstract}
 
+\begin{spacing}{1.4}
 This thesis presents an end-to-end American Sign Language (ASL)
 recognition system that runs entirely on a consumer Android phone.
 Two complementary tasks are addressed: fingerspelling recognition
@@ -8,23 +9,36 @@ over the 29 classes of the ASL Alphabet dataset, and word-level
 recognition over the 100-class WLASL-100 vocabulary. For the letter
 task, two classifiers are trained and compared: an EfficientNet-B0
 that consumes raw image crops and a compact multi-layer perceptron
-that consumes 21 MediaPipe hand landmarks. They reach
-\SI{100}{\percent} and \SI{99.38}{\percent} Top-1 accuracy
-respectively on the held-out test partition, with the landmark
-model shipping in a \SI{0.24}{MB} checkpoint. For the word task, a
+over 21 MediaPipe hand landmarks. On the single-signer ASL Alphabet
+test split they reach \SI{100}{\percent} and \SI{99.38}{\percent}
+Top-1 respectively, read as a pipeline sanity check rather than
+capability claims; the landmark model ships in a \SI{0.24}{MB}
+checkpoint. A single-user on-device manual evaluation under
+realistic camera conditions inverts the offline ranking on the
+budget phone (landmark MLP \SI{100}{\percent}, image network
+\SI{92.9}{\percent}), motivating the landmark variant as the
+deployment default for the letter task. For the word task, a
 bidirectional LSTM is trained on a two-handed 128-dimensional
-landmark feature stream; a five-seed logit-averaging ensemble reaches
-\SI{56.22}{\percent} Top-1 and \SI{81.09}{\percent} Top-5 on the
-WLASL-100 test partition, clearing the project proposal's hard
-acceptance threshold of \SI{40}{\percent} Top-1 by sixteen
-percentage points. All four classifiers are exported to TensorFlow
-Lite and deployed in an Android application built around CameraX
-and MediaPipe Hands. A manual evaluation on two phones spanning
-the budget (TECNO SPARK 20C) and flagship (Xiaomi 15T Pro)
-segments characterises on-device throughput, latency, and the
-single-user out-of-distribution accuracy gap, and produces a
-device-conditional model-selection guideline for mobile sign
-language deployment.
-
-\vspace{1cm}
-\noindent\textbf{Keywords:} sign language recognition, ASL, MediaPipe, EfficientNet, BiLSTM, mobile deployment, TensorFlow Lite.
+landmark feature stream extracted from a yt-dlp-recovered WLASL-100
+corpus (\num{1465} clips, a \SI{44}{\percent} increase over the
+\num{1013}-video Kaggle baseline). A five-seed logit-averaging
+ensemble reaches \SI{56.22}{\percent} Top-1 and
+\SI{81.09}{\percent} Top-5 on the WLASL-100 test partition under
+the canonical person-mixed split, clearing the \SI{40}{\percent}
+Top-1 acceptance bar adopted for this thesis by sixteen percentage
+points. Because the protocol is person-mixed by design, this
+offline figure is positioned as a literature-comparable benchmark
+point under that protocol rather than as a signer-independent
+generalization estimate. A nine-step forward-additive ablation
+decomposes the gain from a \SI{20}{\percent} baseline to the
+\SI{60.08}{\percent} final validation accuracy into three pillars
+of comparable weight: data engineering, the extraction pipeline,
+and training-recipe refinements. All four classifiers are exported
+to TensorFlow Lite and deployed in an Android application built
+around CameraX and MediaPipe Hands. On-device throughput, latency,
+and the OOD accuracy gap are characterised on a budget
+(TECNO SPARK 20C) and a flagship (Xiaomi 15T Pro); word accuracy
+is flagship-only because entry-level ensemble latency is too high
+for interactive use. The evaluation produces a device-conditional
+model-selection guideline.
+\end{spacing}

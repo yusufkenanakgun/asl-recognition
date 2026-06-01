@@ -1,36 +1,63 @@
 \chapter*{\"Ozet}
 \addcontentsline{toc}{chapter}{\"Ozet}
 
-Bu tez, t\"um\"uyle bir t\"uketici Android telefon \"uzerinde
+\begin{spacing}{1.4}
+Bu tez, tamam{\i}yla bir Android telefon \"uzerinde
 \c{c}al{\i}\c{s}an u\c{c}tan uca bir Amerikan \.I\c{s}aret Dili
-(ASL) tan{\i}ma sistemi sunmaktad{\i}r. \.Iki t\"umleyici g\"orev
-ele al{\i}n{\i}r: ASL Alphabet veri k\"umesinin 29 s{\i}n{\i}f{\i}
-\"uzerinden parmak ile harf tan{\i}ma ve WLASL-100 veri
-k\"umesinin 100 kelimelik s\"ozda\u{g}arc{\i}\u{g}{\i} \"uzerinden
-kelime tan{\i}ma. Harf g\"orevi i\c{c}in iki s{\i}n{\i}fland{\i}r{\i}c{\i}
+(ASL) tan{\i}ma sistemi sunmaktad{\i}r. Sistem, birbirini
+tamamlayan iki tan{\i}ma g\"orevini ele al{\i}r: ASL Alphabet veri
+k\"umesinin 29 s{\i}n{\i}f{\i} \"uzerinde harf d\"uzeyinde parmak
+alfabesi tan{\i}ma ve WLASL-100 veri k\"umesinin 100 kelimelik
+s\"ozda\u{g}arc{\i}\u{g}{\i} \"uzerinde kelime d\"uzeyinde tan{\i}ma.
+Harf g\"orevi i\c{c}in iki s{\i}n{\i}fland{\i}r{\i}c{\i}
 e\u{g}itilip kar\c{s}{\i}la\c{s}t{\i}r{\i}lm{\i}\c{s}t{\i}r: ham
-g\"or\"unt\"u kesitlerini girdi olarak alan bir EfficientNet-B0 ve
-MediaPipe ile \c{c}{\i}kar{\i}lan 21 el i\c{s}aret noktas{\i}n{\i}
-girdi olarak alan, kompakt bir \c{c}ok-katmanl{\i} alg{\i}lay{\i}c{\i}
-(MLP). Ayr{\i}lm{\i}\c{s} test b\"ol\"um\"unde s{\i}ras{\i}yla
-\%100 ve \%99{,}38 Top-1 do\u{g}rulu\u{g}una ula\c{s}m{\i}\c{s}lar,
-landmark tabanl{\i} modelin a\u{g}{\i}rl{\i}\u{g}{\i} 0{,}24 MB
-boyutunda kalm{\i}\c{s}t{\i}r. Kelime g\"orevi i\c{c}in
-\c{c}ift-elli 128 boyutlu landmark \"oznitelik dizisi \"uzerine
-\c{c}ift-y\"onl\"u bir LSTM e\u{g}itilmi\c{s}; be\c{s} farkl{\i}
-ba\c{s}lang{\i}c\c{c}{\i} ortalayan b\"ut\"unleme (ensemble)
-WLASL-100 test k\"umesinde \%56{,}22 Top-1 ve \%81{,}09 Top-5
-de\u{g}erlerine ula\c{s}m{\i}\c{s}, proje \"onerisinin koydu\u{g}u
-\%40 Top-1 kabul e\c{s}i\u{g}ini 16 puan a\c{s}m{\i}\c{s}t{\i}r.
-D\"ort s{\i}n{\i}fland{\i}r{\i}c{\i} TensorFlow Lite'a aktar{\i}lm{\i}\c{s}
-ve CameraX ile MediaPipe Hands \"uzerine kurulu bir Android
-uygulamas{\i}nda da\u{g}{\i}t{\i}lm{\i}\c{s}t{\i}r. B\"ut\c{c}e
-(TECNO SPARK 20C) ve amiral gemisi (Xiaomi 15T Pro) segmentlerini
-kapsayan iki telefonda yap{\i}lan elle de\u{g}erlendirme; cihaz \"uzerinde
-g\"or\"unt\"u i\c{s}leme h{\i}z{\i}n{\i} (FPS), gecikmeyi ve tek
-kullan{\i}c{\i} OOD do\u{g}ruluk fark{\i}n{\i} karakterize etmi\c{s},
-mobil i\c{s}aret dili da\u{g}{\i}t{\i}m{\i} i\c{c}in cihaz-ko\c{s}ullu
-bir model se\c{c}im rehberi \"uretmi\c{s}tir.
-
-\vspace{1cm}
-\noindent\textbf{Anahtar Kelimeler:} i\c{s}aret dili tan{\i}ma, ASL, MediaPipe, EfficientNet, BiLSTM, mobil da\u{g}{\i}t{\i}m, TensorFlow Lite.
+g\"or\"unt\"uleri i\c{s}leyen bir EfficientNet-B0 ve MediaPipe
+Hands taraf{\i}ndan \c{c}{\i}kar{\i}lan 21 el i\c{s}aret noktas{\i}
+\"uzerinde \c{c}al{\i}\c{s}an kompakt bir \c{c}ok katmanl{\i}
+alg{\i}lay{\i}c{\i} (MLP). Tek imzalay{\i}c{\i}l{\i} ASL Alphabet
+test b\"ol\"um\"unde s{\i}ras{\i}yla \%100 ve \%99{,}38 Top-1
+de\u{g}erlerine ula\c{s}m{\i}\c{s}lard{\i}r; bu \c{c}evrim
+d{\i}\c{s}{\i} say{\i}lar bir yetenek iddias{\i} de\u{g}il,
+e\u{g}itim hatt{\i}n{\i}n sanity-check'i olarak okunmal{\i}d{\i}r;
+landmark model 0{,}24 MB'l{\i}k bir \c{c}ekirdekte
+ta\c{s}{\i}n{\i}r. Ger\c{c}ek kamera ko\c{s}ullar{\i}nda
+y\"ur\"ut\"ulen tek kullan{\i}c{\i}l{\i} cihaz \"uzeri elle
+de\u{g}erlendirme b\"ut\c{c}e telefonda \c{c}evrim d{\i}\c{s}{\i}
+s{\i}ralamay{\i} tersine \c{c}evirmi\c{s} (landmark MLP \%100,
+g\"or\"unt\"u a\u{g} \%92{,}9) ve harf g\"orevinde landmark
+t\"urevini da\u{g}{\i}t{\i}m varsay{\i}lan{\i} olarak
+desteklemi\c{s}tir. Kelime g\"orevi i\c{c}in, halka a\c{c}{\i}k
+Kaggle paketinden elde edilen \num{1013} videoluk taban
+{\"u}zerine yt-dlp tabanl{\i} bir kurtarma hatt{\i}yla 448 bozuk
+ba\u{g}lant{\i}l{\i} video kurtar{\i}l{\i}p \num{1465} kliplik bir
+WLASL-100 derlemi olu\c{s}turulmu\c{s} (\%44 art{\i}\c{s}), iki
+elden \c{c}{\i}kar{\i}lan 128 boyutlu i\c{s}aret noktas{\i} dizisi
+\"uzerinde \c{c}ift y\"onl\"u bir LSTM e\u{g}itilmi\c{s}tir.
+Be\c{s} seed'li logit ortalamal{\i} ensemble, veri k\"umesinin
+kanonik person-mixed b\"ol\"umlemesi alt{\i}nda WLASL-100 test
+b\"ol\"um\"unde \%56{,}22 Top-1 ve \%81{,}09 Top-5'e
+ula\c{s}m{\i}\c{s} ve tezin benimsedi\u{g}i \%40 Top-1 kabul
+e\c{s}i\u{g}ini 16 puan a\c{s}m{\i}\c{s}t{\i}r. WLASL-100
+b\"ol\"umlemesi tasar{\i}m gere\u{g}i person-mixed
+oldu\u{g}undan, bu \c{c}evrim d{\i}\c{s}{\i} say{\i} ayn{\i}
+protokol \"uzerinde literat\"ur ile k{\i}yaslanabilir bir
+benchmark noktas{\i} olarak konumland{\i}r{\i}lm{\i}\c{s}t{\i}r;
+signer-ba\u{g}{\i}ms{\i}z bir genelleme tahmini de\u{g}ildir.
+Dokuz ad{\i}ml{\i} ileriye d\"on\"uk (forward-additive) bir
+ablasyon, \%20 taban{\i}ndan \%60{,}08'lik son do\u{g}rulama
+do\u{g}rulu\u{g}una kadar olan kazan{\i}m{\i} a\u{g}{\i}rl{\i}\u{g}{\i}
+kar\c{s}{\i}la\c{s}t{\i}r{\i}labilir \"u\c{c} s\"utuna
+ay{\i}rmaktad{\i}r: veri m\"uhendisli\u{g}i, \c{c}{\i}kar{\i}m
+hatt{\i} ve e\u{g}itim rejimi rafinmanlar{\i}. D\"ort
+s{\i}n{\i}fland{\i}r{\i}c{\i}n{\i}n tamam{\i} TensorFlow Lite'a
+aktar{\i}lm{\i}\c{s} ve CameraX + MediaPipe Hands tabanl{\i} bir
+Android uygulamas{\i}nda da\u{g}{\i}t{\i}lm{\i}\c{s}t{\i}r.
+B\"ut\c{c}e (TECNO SPARK 20C) ve amiral gemisi (Xiaomi 15T Pro)
+\"uzerinde FPS, gecikme ve OOD do\u{g}ruluk fark{\i}
+\"ol\c{c}\"ulm\"u\c{s}t\"ur; ensemble gecikmesi giri\c{s} seviyesi
+cihazda kabul edilemeyecek kadar y\"uksek oldu\u{g}undan kelime
+do\u{g}rulu\u{g}u yaln{\i}zca amiral gemisi cihazda
+raporlanm{\i}\c{s}t{\i}r. De\u{g}erlendirme, mobil da\u{g}{\i}t{\i}m
+i\c{c}in cihaza ba\u{g}l{\i} bir model se\c{c}im rehberi ortaya
+koymu\c{s}tur.
+\end{spacing}

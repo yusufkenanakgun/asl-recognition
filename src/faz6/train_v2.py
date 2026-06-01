@@ -132,8 +132,10 @@ class SeqDataset(Dataset):
                 pad = torch.zeros(T - new_T, D)
                 x = torch.cat([x_interp, pad], dim=0)
             # Presence flag'leri (idx 0 ve 64) eski binary değerlerine yuvarla
-            x[:, 0] = (x[:, 0] > 0.5).float()
-            x[:, 64] = (x[:, 64] > 0.5).float()
+            # (sadece V2 iki-el formatında; tek-el 63-d'de presence flag yok)
+            if D >= 128:
+                x[:, 0] = (x[:, 0] > 0.5).float()
+                x[:, 64] = (x[:, 64] > 0.5).float()
 
         # 2) Temporal jitter — sequence'ı ±N frame kaydır (kırp + sıfır pad)
         shift = int(torch.randint(-TEMPORAL_JITTER, TEMPORAL_JITTER + 1, (1,)).item())
@@ -148,8 +150,9 @@ class SeqDataset(Dataset):
 
         # 4) Gauss noise — sadece koordinat boyutlarına (presence flag 0/1 kalır)
         noise = torch.randn_like(x) * NOISE_STD
-        noise[:, 0] = 0    # sol presence flag
-        noise[:, 64] = 0   # sağ presence flag
+        if D >= 128:
+            noise[:, 0] = 0    # sol presence flag
+            noise[:, 64] = 0   # sağ presence flag
         x = x + noise
 
         return x
@@ -217,6 +220,7 @@ def train_one(
     X_val: np.ndarray, y_val: np.ndarray,
     num_classes: int, device: torch.device,
     ckpt_path: Path, history_path: Path,
+    augment: bool = True,
 ) -> float:
     """Tek bir model eğitir, best checkpoint kaydeder, best val acc döndürür."""
     # Determinism
@@ -226,7 +230,7 @@ def train_one(
         torch.cuda.manual_seed_all(seed)
 
     # Sampler / DataLoader
-    train_dataset = SeqDataset(X_train, y_train, augment=True)
+    train_dataset = SeqDataset(X_train, y_train, augment=augment)
     if USE_WEIGHTED_SAMPLER:
         class_counts = np.bincount(y_train, minlength=num_classes).astype(np.float32)
         class_weights = 1.0 / np.clip(class_counts, 1, None)
@@ -370,42 +374,60 @@ def ensemble_eval(
 # ---------------------------------------------------------------------------
 # Ana akış
 # ---------------------------------------------------------------------------
-def main(n_models: int = 1) -> None:
+def main(n_models: int = 1, data_dir: Path | None = None,
+         out_dir: Path | None = None, run_name: str | None = None,
+         augment: bool = True) -> None:
+    global INPUT_SIZE  # data'dan infer edilecek
+
+    data_dir = data_dir or DATA_DIR
+    out_dir = out_dir or OUT_DIR
+    if run_name:
+        out_dir = out_dir / "ablation" / run_name
+    out_dir.mkdir(parents=True, exist_ok=True)
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Device: {device}")
     if device.type == "cuda":
         print(f"GPU: {torch.cuda.get_device_name(0)}")
 
     # Veri (tek sefer yükle, hepsi paylaşır)
-    print("\nVeri yükleniyor...")
-    X_train = np.load(DATA_DIR / "X_train.npy")
-    y_train = np.load(DATA_DIR / "y_train.npy")
-    X_val = np.load(DATA_DIR / "X_val.npy")
-    y_val = np.load(DATA_DIR / "y_val.npy")
-    with (DATA_DIR / "gloss_to_idx.json").open() as f:
+    print(f"\nVeri klasörü: {data_dir}")
+    print(f"Çıktı klasörü: {out_dir}")
+    X_train = np.load(data_dir / "X_train.npy")
+    y_train = np.load(data_dir / "y_train.npy")
+    X_val = np.load(data_dir / "X_val.npy")
+    y_val = np.load(data_dir / "y_val.npy")
+    with (data_dir / "gloss_to_idx.json").open() as f:
         gloss_to_idx = json.load(f)
     num_classes = len(gloss_to_idx)
 
+    # input_size data shape'inden infer
+    INPUT_SIZE = int(X_train.shape[-1])
     print(f"  Train: {X_train.shape} | Val: {X_val.shape} | Sınıf: {num_classes}")
+    print(f"  Inferred input_size: {INPUT_SIZE}")
     class_counts = np.bincount(y_train, minlength=num_classes).astype(int)
     print(f"  Train class range: {class_counts.min()}-{class_counts.max()}, "
           f"ortalama {class_counts.mean():.1f}")
 
+    # Konfig özeti
+    print(f"\nKonfig: augment={augment} | mixup_α={MIXUP_ALPHA} | "
+          f"hidden={HIDDEN_SIZE} | sampler={USE_WEIGHTED_SAMPLER}")
+
     # Eğitim — N farklı seed
     ckpts: list[Path] = []
     print("\n" + "=" * 70)
-    print(f"EĞİTİM — {n_models} model (mixup α={MIXUP_ALPHA}, hidden={HIDDEN_SIZE})")
+    print(f"EĞİTİM — {n_models} model")
     print("=" * 70)
     start_time = time.time()
 
     for i in range(n_models):
         seed = i
         if n_models == 1:
-            ckpt = OUT_DIR / "best_lstm.pth"
-            hist = OUT_DIR / "training_history.json"
+            ckpt = out_dir / "best_lstm.pth"
+            hist = out_dir / "training_history.json"
         else:
-            ckpt = OUT_DIR / f"best_lstm_seed{seed}.pth"
-            hist = OUT_DIR / f"training_history_seed{seed}.json"
+            ckpt = out_dir / f"best_lstm_seed{seed}.pth"
+            hist = out_dir / f"training_history_seed{seed}.json"
         print(f"\n--- Model {i+1}/{n_models} (seed={seed}) → {ckpt.name} ---")
         train_one(
             seed=seed,
@@ -413,6 +435,7 @@ def main(n_models: int = 1) -> None:
             X_val=X_val, y_val=y_val,
             num_classes=num_classes, device=device,
             ckpt_path=ckpt, history_path=hist,
+            augment=augment,
         )
         ckpts.append(ckpt)
 
@@ -421,6 +444,35 @@ def main(n_models: int = 1) -> None:
     print("TÜM EĞİTİMLER TAMAMLANDI")
     print("=" * 70)
     print(f"Toplam süre: {elapsed/60:.1f} dakika")
+
+    # Bireysel val acc'leri özetle
+    individual_acc = []
+    for ckpt in ckpts:
+        chk = torch.load(ckpt, map_location="cpu")
+        individual_acc.append(round(float(chk["best_val_acc"]), 2))
+    print(f"\nBireysel val acc: {individual_acc}")
+    if individual_acc:
+        print(f"Ortalama: {np.mean(individual_acc):.2f}%  "
+              f"Std: {np.std(individual_acc):.2f}  "
+              f"Best: {max(individual_acc):.2f}%")
+
+    summary = {
+        "config": {
+            "data_dir": str(data_dir),
+            "n_models": n_models,
+            "input_size": INPUT_SIZE,
+            "hidden_size": HIDDEN_SIZE,
+            "augment": augment,
+            "mixup_alpha": MIXUP_ALPHA,
+            "use_weighted_sampler": USE_WEIGHTED_SAMPLER,
+            "epochs": NUM_EPOCHS,
+            "batch_size": BATCH_SIZE,
+        },
+        "individual_val_acc": individual_acc,
+        "mean_val_acc": round(float(np.mean(individual_acc)), 2) if individual_acc else None,
+        "std_val_acc": round(float(np.std(individual_acc)), 2) if individual_acc else None,
+        "elapsed_minutes": round(elapsed / 60, 2),
+    }
 
     # Ensemble değerlendirmesi
     if n_models > 1:
@@ -431,8 +483,13 @@ def main(n_models: int = 1) -> None:
         print(f"  ENSEMBLE val acc:     {result['ensemble_val_acc']:.2f}%")
         print(f"  Best single'a kazanç: +{result['ensemble_gain_vs_best_single']:.2f} puan")
 
-        with (OUT_DIR / "ensemble_results.json").open("w") as f:
+        with (out_dir / "ensemble_results.json").open("w") as f:
             json.dump(result, f, indent=2)
+        summary["ensemble"] = result
+
+    with (out_dir / "run_summary.json").open("w") as f:
+        json.dump(summary, f, indent=2)
+    print(f"\nÖzet: {out_dir / 'run_summary.json'}")
 
 
 if __name__ == "__main__":
@@ -440,5 +497,46 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--n-models", type=int, default=1,
                    help="Kaç model eğitilecek (ensemble için 5 önerilir)")
+    p.add_argument("--data-dir", type=str, default=None,
+                   help="Landmark klasörü (varsayılan: data/faz6_v2/landmarks_wlasl100)")
+    p.add_argument("--run-name", type=str, default=None,
+                   help="Ablation run adı → out_dir/ablation/<name>/ altına yazılır")
+    p.add_argument("--no-aug", action="store_true",
+                   help="Sequence augmentation kapalı (jitter/dropout/noise/time-scale)")
+    p.add_argument("--no-mixup", action="store_true",
+                   help="Mixup kapalı (α=0)")
+    p.add_argument("--mixup-alpha", type=float, default=None,
+                   help="Mixup α'sını override et (örn. 0.2)")
+    p.add_argument("--no-sampler", action="store_true",
+                   help="WeightedRandomSampler kapalı")
+    p.add_argument("--hidden-size", type=int, default=None,
+                   help="LSTM hidden size override (örn. 128)")
+    p.add_argument("--epochs", type=int, default=None,
+                   help="Max epoch override")
+    p.add_argument("--light-aug", action="store_true",
+                   help="Iter A hafif aug değerleri (jitter±2, dropout 0.10, noise 0.01)")
+    p.add_argument("--no-time-scale", action="store_true",
+                   help="Time-scaling aug kapalı (TIME_SCALE_RANGE=(1.0,1.0))")
     args = p.parse_args()
-    main(n_models=args.n_models)
+
+    # Module-level hiperparametreleri argüman'lara göre override
+    if args.no_mixup:
+        MIXUP_ALPHA = 0.0
+    elif args.mixup_alpha is not None:
+        MIXUP_ALPHA = args.mixup_alpha
+    if args.no_sampler:
+        USE_WEIGHTED_SAMPLER = False
+    if args.hidden_size is not None:
+        HIDDEN_SIZE = args.hidden_size
+    if args.epochs is not None:
+        NUM_EPOCHS = args.epochs
+    if args.light_aug:
+        TEMPORAL_JITTER = 2
+        FRAME_DROPOUT_P = 0.10
+        NOISE_STD = 0.01
+    if args.no_time_scale:
+        TIME_SCALE_RANGE = (1.0, 1.0)
+
+    data_dir = Path(args.data_dir) if args.data_dir else None
+    main(n_models=args.n_models, data_dir=data_dir, run_name=args.run_name,
+         augment=not args.no_aug)

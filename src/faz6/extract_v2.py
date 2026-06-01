@@ -62,10 +62,10 @@ def ensure_model(url: str, target: Path) -> Path:
     return target
 
 
-def make_hand_landmarker(model_path: Path) -> mp_vision.HandLandmarker:
+def make_hand_landmarker(model_path: Path, num_hands: int = 2) -> mp_vision.HandLandmarker:
     opts = mp_vision.HandLandmarkerOptions(
         base_options=mp_python.BaseOptions(model_asset_path=str(model_path)),
-        num_hands=2,
+        num_hands=num_hands,
         min_hand_detection_confidence=0.5,
         min_hand_presence_confidence=0.5,
         min_tracking_confidence=0.5,
@@ -130,11 +130,23 @@ def normalize_hand(landmarks) -> np.ndarray:
 # ---------------------------------------------------------------------------
 # Tek frame -> feature vektörü
 # ---------------------------------------------------------------------------
-def frame_features(frame_rgb: np.ndarray, hand: mp_vision.HandLandmarker) -> np.ndarray:
-    """Tek bir RGB frame'i FEATURE_DIM boyutlu vektöre çevir (sol+sağ el)."""
-    mp_img = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame_rgb)
+def frame_features(frame_rgb: np.ndarray, hand: mp_vision.HandLandmarker,
+                   single_hand: bool = False) -> np.ndarray:
+    """Tek bir RGB frame'i feature vektörüne çevir.
 
+    single_hand=False: V2 modu (128-d, sol+sağ presence+coords).
+    single_hand=True : V1 modu (63-d, tek el, presence flag yok).
+    """
+    mp_img = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame_rgb)
     hand_res = hand.detect(mp_img)
+
+    if single_hand:
+        # V1 mimarisi: ilk algılanan el, 63-d (presence flag yok)
+        feat = np.zeros(21 * 3, dtype=np.float32)
+        if hand_res.hand_landmarks:
+            feat = normalize_hand(hand_res.hand_landmarks[0]).flatten().astype(np.float32)
+        return feat
+
     left_feat = np.zeros(HAND_FEAT_DIM, dtype=np.float32)   # presence=0, coords=0
     right_feat = np.zeros(HAND_FEAT_DIM, dtype=np.float32)
 
@@ -159,19 +171,24 @@ def video_to_sequence(
     frame_start: int,
     frame_end: int,
     hand: mp_vision.HandLandmarker,
+    single_hand: bool = False,
+    no_crop: bool = False,
 ) -> np.ndarray | None:
+    if no_crop:
+        frame_start, frame_end = 1, -1
     frames = sample_frames(video_path, frame_start, frame_end, SEQ_LEN)
     if not frames:
         return None
 
-    feats = [frame_features(f, hand) for f in frames]
-    seq = np.stack(feats, axis=0)  # (T, FEATURE_DIM)
+    feat_dim = 21 * 3 if single_hand else FEATURE_DIM
+    feats = [frame_features(f, hand, single_hand=single_hand) for f in frames]
+    seq = np.stack(feats, axis=0)  # (T, feat_dim)
 
     # Pad veya kırp
     if seq.shape[0] >= SEQ_LEN:
         seq = seq[:SEQ_LEN]
     else:
-        pad = np.zeros((SEQ_LEN - seq.shape[0], FEATURE_DIM), dtype=np.float32)
+        pad = np.zeros((SEQ_LEN - seq.shape[0], feat_dim), dtype=np.float32)
         seq = np.vstack([seq, pad])
 
     return seq.astype(np.float32)
@@ -180,8 +197,12 @@ def video_to_sequence(
 # ---------------------------------------------------------------------------
 # Ana çalıştırma
 # ---------------------------------------------------------------------------
-def main(limit: int | None = None) -> None:
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+def main(limit: int | None = None, out_dir: Path = OUT_DIR,
+         single_hand: bool = False, no_crop: bool = False) -> None:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    feat_dim = 21 * 3 if single_hand else FEATURE_DIM
+    print(f"Konfig: single_hand={single_hand}, no_crop={no_crop}, feature_dim={feat_dim}")
+    print(f"Çıktı klasörü: {out_dir}")
 
     # Seçilen sınıfları yükle
     with SELECTED_FILE.open() as f:
@@ -239,7 +260,7 @@ def main(limit: int | None = None) -> None:
 
     # Modeller
     hand_model = ensure_model(HAND_MODEL_URL, MODELS_DIR / "hand_landmarker.task")
-    hand_lm = make_hand_landmarker(hand_model)
+    hand_lm = make_hand_landmarker(hand_model, num_hands=1 if single_hand else 2)
 
     # Toplama
     bins = {"train": {"X": [], "y": [], "meta": []},
@@ -252,7 +273,10 @@ def main(limit: int | None = None) -> None:
         video_path = videos_dir / f"{w['video_id']}.mp4"
         stats["total"] += 1
         try:
-            seq = video_to_sequence(video_path, w["frame_start"], w["frame_end"], hand_lm)
+            seq = video_to_sequence(
+                video_path, w["frame_start"], w["frame_end"], hand_lm,
+                single_hand=single_hand, no_crop=no_crop,
+            )
         except Exception as exc:  # noqa: BLE001
             print(f"  HATA {w['video_id']}: {exc}")
             seq = None
@@ -281,33 +305,43 @@ def main(limit: int | None = None) -> None:
             continue
         X = np.stack(b["X"]).astype(np.float32)
         y = np.array(b["y"], dtype=np.int64)
-        np.save(OUT_DIR / f"X_{split}.npy", X)
-        np.save(OUT_DIR / f"y_{split}.npy", y)
-        with (OUT_DIR / f"meta_{split}.json").open("w", encoding="utf-8") as f:
+        np.save(out_dir / f"X_{split}.npy", X)
+        np.save(out_dir / f"y_{split}.npy", y)
+        with (out_dir / f"meta_{split}.json").open("w", encoding="utf-8") as f:
             json.dump(b["meta"], f, indent=2, ensure_ascii=False)
         stats["by_split"][split] = {"size": len(X), "shape": list(X.shape)}
         print(f"  {split}: {X.shape}")
 
     # gloss_to_idx
-    with (OUT_DIR / "gloss_to_idx.json").open("w", encoding="utf-8") as f:
+    with (out_dir / "gloss_to_idx.json").open("w", encoding="utf-8") as f:
         json.dump(gloss_to_idx, f, indent=2, ensure_ascii=False)
 
-    stats["feature_dim"] = FEATURE_DIM
+    stats["feature_dim"] = feat_dim
     stats["seq_len"] = SEQ_LEN
     stats["num_classes"] = len(gloss_to_idx)
-    with (OUT_DIR / "extraction_stats.json").open("w", encoding="utf-8") as f:
+    stats["single_hand"] = single_hand
+    stats["no_crop"] = no_crop
+    with (out_dir / "extraction_stats.json").open("w", encoding="utf-8") as f:
         json.dump(stats, f, indent=2)
 
     print("\n" + "=" * 60)
     print("EXTRACTION TAMAMLANDI")
     print("=" * 60)
     print(json.dumps(stats, indent=2))
-    print(f"\nÇıktı: {OUT_DIR}")
+    print(f"\nÇıktı: {out_dir}")
 
 
 if __name__ == "__main__":
     import argparse
     p = argparse.ArgumentParser()
     p.add_argument("--limit", type=int, default=None, help="Test için sadece N video işle")
+    p.add_argument("--out-dir", type=str, default=None,
+                   help="Çıktı klasörü (varsayılan: data/faz6_v2/landmarks_wlasl100)")
+    p.add_argument("--single-hand", action="store_true",
+                   help="V1 modu — tek el, 63-d, presence flag yok")
+    p.add_argument("--no-crop", action="store_true",
+                   help="WLASL frame_start/frame_end yok say, tüm video kullanılır")
     args = p.parse_args()
-    main(limit=args.limit)
+    out_dir = Path(args.out_dir) if args.out_dir else OUT_DIR
+    main(limit=args.limit, out_dir=out_dir,
+         single_hand=args.single_hand, no_crop=args.no_crop)
