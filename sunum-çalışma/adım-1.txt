@@ -1,0 +1,172 @@
+================================================================
+ADIM 1 — En Temel Terimler (Seviye Tespiti)
+================================================================
+
+Kurallar:
+- Soruları okuyup C1, C2, ... satırlarına kendi kelimelerinle yaz.
+- Bilmiyorsan "bilmiyorum" yazman daha iyi — tahmin etme.
+- Cevap verdikten sonra F (feedback) satırlarını ben dolduracağım.
+- Sonra adım-2.txt'de seviyene göre 5 yeni soru gelecek.
+
+================================================================
+
+S1: "Landmark" nedir? Bizim projemizde MediaPipe Hand Landmarker'dan
+    her el için kaç tane landmark (anahtar nokta) çıkıyor ve bu
+    landmark'lar tam olarak ne tür bir sayısal bilgi taşıyor?
+    (Yani bir landmark dediğimizde elde tuttuğumuz şey nedir?)
+
+C1: sanırım mediapipe görüntüden landmark çıkarma işlemine deniyor
+    landmark dediğimiz eldeki işaretçi noktalar oluyor her el için
+    21 vektör çıkarılıyor 3 tane de yön var x,y,z 21x3 63 vektör
+    oluyor
+
+F1: Kısmen doğru, terim düzeltmeleri:
+    - "MediaPipe = landmark çıkarma işlemi" YANLIŞ. MediaPipe, Google'ın
+      açık kaynak bir kütüphanesi (framework). İçinde "Hand Landmarker"
+      adında hazır bir model var; landmark çıkarma işini bu model yapıyor.
+      Yani: MediaPipe = kütüphane adı, Hand Landmarker = onun içindeki
+      model. Bizim kodumuzda kullandığımız MediaPipe'ın bu hazır modeli.
+    - "21 vektör" değil, **21 nokta (keypoint)**. Her nokta bir 3B
+      koordinattan oluşuyor.
+    - "x,y,z = yön" YANLIŞ. x,y,z = **koordinat** (uzaydaki konum).
+        • x: yatay (görüntüde 0-1 arası normalize)
+        • y: dikey (görüntüde 0-1 arası normalize)
+        • z: derinlik (bilek noktasına göre relatif; eli ileri uzatınca
+              değişir)
+    - 21 nokta × 3 koordinat = 63 sayı (tek el). DOĞRU.
+    - PROJE EKİ: Faz6_v2 BiLSTM'de iki el kullanıyoruz → 63×2 = 126,
+      ayrıca her el için 1 "presence flag" (el var/yok bayrağı) ekliyoruz
+      → toplam **128 boyutlu** vektör. Buna adım-2'de döneceğiz.
+
+
+
+----------------------------------------------------------------
+
+S2: PyTorch nedir, kabaca ne işe yarar? Biz projede onu **ne için**
+    kullandık — yani PyTorch ile yaptığımız ana iş neydi?
+
+C2: pytorch python dilinde model eğitme kütüphanesi bence .pth sonuç
+    üretiyor projede offline modeller üretirken kullandık pytorch u
+    pytorch ile yaptığımız ana iş model eğitimi
+
+F2: Büyük resim doğru. Düzeltme + ekleme:
+    - "Kütüphane" yerine **deep learning framework** demek daha doğru —
+      TensorFlow'un rakibi/alternatifi. Yani PyTorch, model kurmak,
+      eğitmek ve test etmek için bir altyapı sunuyor.
+    - PyTorch'un asıl gücü iki şey:
+        1) **Tensor** işlemleri (GPU'da hızlı matris-çarpımı)
+        2) **Autograd** (otomatik gradient hesabı — geri yayılım için)
+      Yani sen "loss" hesaplıyorsun, PyTorch geri yayılımı (backprop)
+      kendisi yapıyor. Bunu adım-2'de soracağım.
+    - ".pth = checkpoint" DOĞRU. İçinde modelin **ağırlıkları** (weights)
+      yatıyor. Model mimarisi koddadır, ağırlıklar .pth'tedir; ikisi
+      birleşince çalışan model olur.
+    - "Offline eğitim" DOĞRU — telefonda değil, RTX 3050 makinende
+      eğittin, sonra modeli telefona koydun.
+
+
+
+----------------------------------------------------------------
+
+S3: "Inference" (çıkarım) ile "training" (eğitim) arasındaki fark
+    nedir? Telefondaki Android uygulaması bu ikisinden hangisini
+    yapıyor, sebebiyle birlikte?
+
+C3: android uygulamasında inference yaptık training de bir modeli
+    verisetleri ile eğitiyoruz ardından test edioruz test sonucuna
+    yaptığımız yorumlar inference oluyor
+
+F3: Yarısı doğru, kritik bir kavram karışıklığı var:
+    - "Android'de inference yaptık" DOĞRU. ✓
+    - "Training = veri ile model eğitme" DOĞRU. ✓
+    - ❌ "Test sonucuna yaptığımız yorumlar = inference" YANLIŞ.
+       Inference = yorum değildir. **Eğitilmiş modele yeni bir girdi
+       verip tahmin (output) almak**tır. Yani:
+         Training : ağırlıklar GÜNCELLENİR (loss → backprop → optimizer)
+         Inference: ağırlıklar SABİT, sadece girdi → tahmin akışı çalışır
+       Aslında "test" de bir tür inference'tır — test setinden örnek
+       alıp ağırlıkları DEĞİŞTİRMEDEN tahmin üretiyoruz, sonra doğru
+       cevapla karşılaştırıyoruz. Yorum bizim insanca yaptığımız şey,
+       teknik bir terim değil.
+    - Android neden inference yapıyor, training yapmıyor?
+        • Telefonda GPU/VRAM yetersiz
+        • Veri seti telefonda yok
+        • Training saatler sürer, kullanıcı bekleyemez
+        • Model zaten masaüstünde eğitildi, tek görev tahmin üretmek
+
+
+
+----------------------------------------------------------------
+
+S4: CNN (Convolutional Neural Network) ne tür veriler için
+    tasarlanmış bir model ailesidir? Biz harf tanıma için neden
+    EfficientNet-B0 (bir CNN) seçtik — başka bir deyişle, ASL
+    harfini tanırken modele girdi olarak ne veriyoruz?
+
+C4: CNN i  bilmiyorum EfficientNet-B0 ham görüntü kesitlerini
+    kulanıyor bizim bunu seçmemizin nedeni diğer modellere kıasla çok daha
+düşük parametre ile yüksek accuracy veriyor ve model size ını da diğer RGB
+modellerine göre düşük tutuyor
+
+F4: "Bilmiyorum" demen iyi — tahmin etmemişsin. Şimdi öğrenelim:
+    - **CNN = Convolutional Neural Network** (Evrişimli Sinir Ağı).
+      Görüntü/imaj işlemek için tasarlanmış model ailesi.
+    - Çalışma mantığı (sezgisel): Resmin üstünde küçük filtreler
+      (çekirdek, "kernel" — örn. 3×3 boyutlu) gezdirilir. Her filtre
+      bir özelliği yakalar:
+        • İlk katmanlar  → kenar, renk geçişi gibi düşük seviye özellikler
+        • Orta katmanlar → doku, basit şekiller
+        • Üst katmanlar  → karmaşık şekiller (parmak ucu, avuç içi gibi)
+      Sonunda bu özellikler birleşip "bu A harfi" gibi bir sınıflandırma
+      yapar.
+    - **EfficientNet-B0 = CNN ailesinin bir üyesi**. Google'ın 2019'da
+      yayınladığı bir mimari. "Compound scaling" denen yöntemle derinlik,
+      genişlik ve çözünürlüğü dengeli büyütüyor → aynı doğrulukta daha
+      AZ parametre.
+    - Sebep sıralaman DOĞRU: az parametre + yüksek accuracy + küçük
+      model boyutu. Buna ek olarak:
+        • **ImageNet'te pretrain'li** — yani bizden önce milyonlarca
+          görüntüde eğitilmiş; biz sadece ASL'ye "uyarlama" (fine-tuning)
+          yaptık. Buna **transfer learning** denir. Adım-2'de soracağım.
+    - Girdi: 224×224 piksel, 3 kanal (RGB) görüntü. Yani tensor şekli
+      [3, 224, 224]. Bunu adım-2'de soracağım.
+
+
+
+----------------------------------------------------------------
+
+S5: TFLite (TensorFlow Lite) nedir? Modeli neden PyTorch
+    (.pth) formatında bırakmadık da TFLite'a (.tflite) çevirdik?
+    Kısaca: bu dönüşüm hangi problemi çözüyor?
+
+C5: tensorflow lite .pth uzantılı modelimizi androidde kullanabilmek için
+yaptığımız dönüşüm işlemi sonucunda çıkan dosya yapısı
+
+F5: Hedef doğru, tanım eksik. Daha net:
+    - **TFLite (TensorFlow Lite) = Google'ın mobil/edge cihazlar için
+      optimize ettiği hafif model FORMATI ve çalıştırma motoru**
+      (runtime). TensorFlow'un "küçük kardeşi" gibi düşün.
+    - "Dönüşüm sonucu dosya yapısı" — kısmen doğru ama TFLite sadece bir
+      dosya formatı değil, aynı zamanda Android/iOS tarafında modeli
+      çalıştıran bir kütüphane (Interpreter).
+    - Neden gerekli? PyTorch (.pth) Android'de DOĞRUDAN çalışmaz çünkü:
+        1) Boyut büyük (PyTorch runtime ağır)
+        2) PyTorch Mobile var ama ekosistemi zayıf; Google ekosistemi
+           (Android, MediaPipe Tasks) TFLite bekliyor
+        3) TFLite, telefon CPU'sunu **XNNPACK** delegate ile çok daha
+           verimli kullanıyor (matris çarpımları için elle optimize
+           edilmiş kütüphane)
+        4) Boyut küçültme (quantization — float32 → int8) mümkün
+    - Bizim pipeline'ımız: **PyTorch (.pth) → ONNX (.onnx) → TFLite
+      (.tflite)**. Yani araya **ONNX** giriyor (sebebi: PyTorch'tan
+      doğrudan TFLite'a köprü yok). ONNX = "Open Neural Network Exchange"
+      — modeli framework'lerden bağımsız bir ara formatta tutar. Buna
+      adım-2'de döneceğim.
+    - Dosya: src/convert_to_tflite.py — bu dönüşümü orada yapıyorsun.
+
+
+
+================================================================
+Cevapları yazdıktan sonra Claude'a "adım-1 bitti" de — feedback
+yazıp adım-2.txt'yi seviyene göre hazırlayacak.
+================================================================

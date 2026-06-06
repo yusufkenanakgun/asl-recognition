@@ -9,7 +9,7 @@ data/
 models/*.pth
 models/*.pt
 models/*.h5
-models/faz6_v2/*.pth
+models/faz6_v2/**/*.pth
 # Deployment-ready küçük modelleri ve TFLite'ları HARİÇ TUT (Android demo için lazım)
 !models/deploy/*.pth
 !models/tflite/*.tflite
@@ -106,6 +106,7 @@ plan-yeri.txt
 ornek-tez/
 kalan-işler.txt
 tez-eksikler.txt
+Yeni Metin Belgesi.txt
 
 # Kişisel referans makale arşivi (telif + boyut)
 articles/

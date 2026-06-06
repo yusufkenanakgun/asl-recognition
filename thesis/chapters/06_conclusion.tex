@@ -286,22 +286,6 @@ prediction. The image-based pipeline is the appropriate fallback
 on such frames; the system does not currently switch between the
 two automatically.
 
-\paragraph{ASL Alphabet generalisation cannot be inferred from
-the reported test accuracy.}
-The \SI{100}{\percent} EfficientNet and \SI{99.38}{\percent} MLP
-numbers reported in Section~\ref{sec:results-letters} are
-upper-bound figures, obtained on a random 70/15/15 split of a
-single-source Kaggle dataset whose images were collected by one
-contributor in a controlled indoor setting. The dataset does not
-expose signer identity in its public release, so a
-signer-disjoint split is not constructible; the random split
-allows the same person, lighting, and background to appear in
-both partitions. The reported accuracy therefore measures
-in-distribution discrimination, not generalisation to a new
-signer in a new room with a new camera. The real-device
-measurements of Section~\ref{sec:results-qualitative} are the
-appropriate ground truth for the latter question.
-
 \paragraph{WLASL-100 person-mixed split and the unmeasured
 generalization band.}
 This is the headline structural limitation of the present

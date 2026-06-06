@@ -1,0 +1,225 @@
+================================================================
+ANLATIM 1 — DERİN ÖĞRENME TEMELLERİ (Training Loop Sözlüğü)
+================================================================
+
+Bu dosyada projedeki eğitim sürecini anlamak için bilmen gereken
+10 temel terim var. Her terim için:
+  • KISA TANIM     — Bir-iki cümlede ne olduğu
+  • PROJEDE NEREDE — Hangi dosya / hangi adımda kullanılıyor
+  • NEDEN          — Niye var, ne işe yarıyor
+
+Sırayla oku — terimler birbirine bağlı, sondaki "training loop"
+parçasını gördüğünde her şey oturuyor.
+
+================================================================
+1. TENSOR
+================================================================
+KISA TANIM:
+  Çok boyutlu sayı kabı. Bir sayı (scalar), bir liste (vector),
+  bir matris (2B), bir matris yığını (3B/4B)... hepsi tensor.
+  PyTorch'ta veri ve ağırlıklar TAMAMI tensor olarak tutuluyor.
+
+PROJEDE NEREDE:
+  - Bir RGB harf fotoğrafı tensor olarak [3, 224, 224] şeklinde
+    (3 kanal: R, G, B; 224x224 piksel).
+  - 32 fotoğrafı aynı anda eğitirken shape: [32, 3, 224, 224]
+    (32 = batch size).
+  - Landmark feature: [32 frame, 128 sayı] → BiLSTM girdisi.
+
+NEDEN:
+  GPU, tensor üzerinde matris çarpımı yapacak şekilde tasarlandı.
+  Verini tensor formuna sokarsan, ağ binlerce kat hızlı koşar.
+
+================================================================
+2. MODEL / AĞIRLIK (Weights) / CHECKPOINT (.pth)
+================================================================
+KISA TANIM:
+  - MODEL    : Katmanların bağlanış MİMARİSİ (kod). Hangi katman
+               hangi katmanla bağlı; bu yapı koddadır.
+  - AĞIRLIK  : Modelin içindeki ÖĞRENİLEN SAYILAR (matrisler).
+               Eğitim bu sayıları günceller.
+  - CHECKPOINT (.pth): Ağırlıkların DİSKE YAZILMIŞ HALİ. PyTorch
+               formatında .pth uzantısıyla saklanır.
+
+PROJEDE NEREDE:
+  - Mimari kodu: src/model.py (EfficientNet), src/faz6/train_v2.py
+    (BiLSTM)
+  - Ağırlık dosyaları: models/best_model.pth,
+    models/faz6_v2/best_lstm_seed{0..4}.pth, models/best_mlp_model.pth
+
+NEDEN:
+  Model = "boş kutu", checkpoint = "içindeki bilgi". Telefona
+  veya başka makineye taşıdığında, mimari kodu + ağırlık dosyası
+  ikisini de bilmen gerekir.
+
+================================================================
+3. FORWARD PASS (İLERİ GEÇİŞ)
+================================================================
+KISA TANIM:
+  Girdiyi (örn. bir fotoğraf) modele veriyorsun, model katman
+  katman hesaplayıp çıktıyı (örn. "bu A harfi" olasılığı)
+  üretiyor. İleri yönde tek bir akış: girdi → çıktı.
+
+PROJEDE NEREDE:
+  - Kodda: pred = model(x)
+  - Eğitimde de var, inference'ta da var (telefonda sadece bu var).
+
+NEDEN:
+  Modelin "tahmin" üretme yolu bu. Backward pass'ten önce mutlaka
+  bir forward pass olmak zorunda.
+
+================================================================
+4. LOSS (KAYIP) FONKSİYONU
+================================================================
+KISA TANIM:
+  Modelin tahmini ile DOĞRU cevap arasındaki "ne kadar yanılmış"
+  ölçüsü. Tek bir sayı çıkar — küçük olması iyi.
+
+PROJEDE NEREDE:
+  - src/train.py içinde: criterion = nn.CrossEntropyLoss()
+  - BiLSTM eğitiminde: cross-entropy + label smoothing (0.1)
+
+NEDEN:
+  Modelin "ne kadar yanıldığını" sayısal olarak bilmezsek, neyi
+  düzelteceğimizi bilemeyiz. Loss = düzeltme yönünün pusulası.
+
+================================================================
+5. CROSS-ENTROPY LOSS
+================================================================
+KISA TANIM:
+  Sınıflandırma görevleri için STANDART loss fonksiyonu. "Doğru
+  sınıfa verilen olasılık 1'e ne kadar yakın?" sorusunu cezalandırarak
+  ölçer. Doğru sınıfa 0.99 olasılık verirsen küçük loss, 0.01 verirsen
+  çok büyük loss.
+
+PROJEDE NEREDE:
+  - Tüm üç modelimizde (EfficientNet, MLP, BiLSTM) cross-entropy
+    kullandık.
+  - BiLSTM'de "label smoothing 0.1" varyantı: hedef etiketi 1.0 yerine
+    0.9, kalan 0.1'i diğer sınıflara dağıt → modeli aşırı özgüvenden
+    korur.
+
+NEDEN:
+  29 harf veya 100 kelime — bu çok-sınıflı sınıflandırma. Cross-entropy
+  bunun için matematiksel olarak en uygun loss.
+
+================================================================
+6. BACKWARD PASS (GERİ YAYILIM / BACKPROPAGATION)
+================================================================
+KISA TANIM:
+  Loss'tan başlayarak GERİYE doğru, her ağırlığın loss'a NE KADAR
+  katkı yaptığını hesaplama işlemi. Çıktı: her ağırlık için bir
+  GRADIENT (yön + büyüklük).
+
+PROJEDE NEREDE:
+  - Kodda tek satır: loss.backward()
+  - PyTorch'un autograd motoru bu hesabı OTOMATİK yapıyor — sen
+    matematik türetmek zorunda değilsin.
+
+NEDEN:
+  Modelin neyi nasıl düzelteceğini bilmesi için her ağırlığın
+  "hatadaki sorumluluğunu" bilmek gerekir. Backward pass bu
+  sorumluluğu paylaştırır.
+
+================================================================
+7. GRADIENT (GRADYAN)
+================================================================
+KISA TANIM:
+  Bir ağırlığı SAĞA mı SOLA mı oynatırsam loss DÜŞER sorusunun
+  cevabı. Her ağırlık için bir sayı (yön + büyüklük). Eğer gradient
+  pozitifse → ağırlığı küçült, negatifse → büyült.
+
+PROJEDE NEREDE:
+  - Backward pass'in çıktısı. Her parametrede param.grad olarak durur.
+
+NEDEN:
+  Loss'u azaltmanın MATEMATİKSEL yönü. Gradient olmadan optimizer
+  hangi yöne adım atacağını bilmez.
+
+================================================================
+8. OPTIMIZER (Adam, AdamW)
+================================================================
+KISA TANIM:
+  Gradient'i kullanarak ağırlıkları GÜNCELLEYEN algoritma. En basit
+  haliyle: "ağırlık = ağırlık - learning_rate × gradient". Modern
+  optimizer'lar (Adam, AdamW) bunu daha akıllı yapar (momentum,
+  uyarlanabilir adım büyüklüğü).
+
+PROJEDE NEREDE:
+  - EfficientNet ve MLP eğitiminde: Adam
+  - BiLSTM eğitiminde: AdamW (1e-3 learning rate, weight decay 5e-4)
+  - Kodda: optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
+  - optimizer.step() → ağırlıkları güncelle
+
+NEDEN:
+  Gradient yön söyler ama "ne kadar adım atayım, ne kadar momentum
+  kullanayım" gibi nüansları optimizer çözer. AdamW = Adam + ağırlık
+  ölçeğini düzgün cezalandıran versiyon (overfitting'e karşı).
+
+================================================================
+9. LEARNING RATE (ÖĞRENME ORANI) + WEIGHT DECAY
+================================================================
+KISA TANIM:
+  - LEARNING RATE: Her güncellemede ne kadar büyük adım atılacağı.
+    Çok büyükse → atlanır, ıskalanır. Çok küçükse → eğitim sonsuz
+    sürer, sıkışır.
+  - WEIGHT DECAY: Ağırlıkların aşırı büyümesini cezalandıran küçük
+    bir ek terim. Overfitting'i azaltır.
+
+PROJEDE NEREDE:
+  - BiLSTM: lr=1e-3 (yani 0.001), weight_decay=5e-4 (yani 0.0005)
+  - EfficientNet için de benzer rakamlar.
+
+NEDEN:
+  Bu iki sayı, eğitimin kararlılığını ve overfitting'i en çok etkileyen
+  hiperparametrelerdir. "Hiperparametre" = sen seçersin, model öğrenmez.
+
+================================================================
+10. EPOCH / BATCH / ITERATION
+================================================================
+KISA TANIM:
+  - EPOCH      : Tüm eğitim verisinin BİR KEZ baştan sona gezilmesi.
+  - BATCH      : Aynı anda işlenen örnek kümesi (örn. 32 fotoğraf).
+  - ITERATION  : Bir batch ile yapılan 1 forward + 1 backward + 1
+                 optimizer.step. Yani training loop'un BİR turu.
+
+  Matematik: 87.000 fotoğraf, batch=32 ise 1 epoch = ~2.700 iteration.
+
+PROJEDE NEREDE:
+  - EfficientNet: ~10-20 epoch
+  - BiLSTM: ~80-150 epoch (her seed için)
+  - Kodda: for epoch in range(num_epochs): for x, y in dataloader: ...
+
+NEDEN:
+  Veri tek geçişte yetmez — model her geçişte biraz daha öğrenir.
+  Ama çok geçiş yaparsan overfitting başlar.
+
+================================================================
+*** TRAINING LOOP — HEPSİNİN BİRARAYA GELDİĞİ YER ***
+================================================================
+Yukarıdaki 10 terimi birleştirelim. PyTorch'ta klasik eğitim döngüsü:
+
+  for epoch in range(num_epochs):                  # → 10. EPOCH
+      for x_batch, y_batch in dataloader:          # → 10. BATCH
+          pred = model(x_batch)                    # → 3.  FORWARD
+          loss = criterion(pred, y_batch)          # → 4,5 LOSS (CE)
+          optimizer.zero_grad()                    # eski grad'leri sil
+          loss.backward()                          # → 6.  BACKWARD
+                                                   # → 7.  gradient hesabı
+          optimizer.step()                         # → 8.  OPTIMIZER adımı
+                                                   # → 9.  lr ile günceller
+
+Bu döngü "ITERATION" denen tek bir turdur. Bir epoch boyunca
+~binlerce iteration koşar.
+
+Modelin .pth dosyası, eğitim sonunda en iyi validation accuracy'yi
+veren ağırlıkları diske yazmak demek (best checkpoint).
+
+================================================================
+SONRAKİ ADIM
+================================================================
+Bu 10 terim oturduysa "anlatım-2 ver" de — sıradaki dosyada
+şu konular olacak:
+  CNN, EfficientNet, MLP, RNN, LSTM, BiLSTM, hidden state,
+  dropout, transfer learning, fine-tuning / freezing.
+================================================================

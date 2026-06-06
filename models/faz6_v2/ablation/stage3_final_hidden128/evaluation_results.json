@@ -1,0 +1,154 @@
+{
+  "num_classes": 100,
+  "test_size": 201,
+  "ensemble": {
+    "num_models": 5,
+    "top1_acc": 49.75,
+    "top5_acc": 79.6,
+    "macro_f1": 0.4534,
+    "weighted_f1": 0.4607,
+    "individual_models": [
+      {
+        "ckpt": "best_lstm_seed0.pth",
+        "top1": 43.28,
+        "top5": 75.62,
+        "macro_f1": 0.3889
+      },
+      {
+        "ckpt": "best_lstm_seed1.pth",
+        "top1": 49.25,
+        "top5": 76.12,
+        "macro_f1": 0.461
+      },
+      {
+        "ckpt": "best_lstm_seed2.pth",
+        "top1": 46.77,
+        "top5": 73.63,
+        "macro_f1": 0.4206
+      },
+      {
+        "ckpt": "best_lstm_seed3.pth",
+        "top1": 43.78,
+        "top5": 74.63,
+        "macro_f1": 0.4041
+      },
+      {
+        "ckpt": "best_lstm_seed4.pth",
+        "top1": 44.78,
+        "top5": 77.11,
+        "macro_f1": 0.4161
+      }
+    ],
+    "top_confusions": [
+      {
+        "true": "yes",
+        "pred": "need",
+        "count": 2
+      },
+      {
+        "true": "pizza",
+        "pred": "no",
+        "count": 2
+      },
+      {
+        "true": "help",
+        "pred": "cook",
+        "count": 2
+      },
+      {
+        "true": "want",
+        "pred": "many",
+        "count": 2
+      },
+      {
+        "true": "before",
+        "pred": "wrong",
+        "count": 1
+      },
+      {
+        "true": "before",
+        "pred": "enjoy",
+        "count": 1
+      },
+      {
+        "true": "computer",
+        "pred": "work",
+        "count": 1
+      },
+      {
+        "true": "go",
+        "pred": "but",
+        "count": 1
+      },
+      {
+        "true": "who",
+        "pred": "hearing",
+        "count": 1
+      },
+      {
+        "true": "candy",
+        "pred": "black",
+        "count": 1
+      },
+      {
+        "true": "candy",
+        "pred": "hearing",
+        "count": 1
+      },
+      {
+        "true": "candy",
+        "pred": "pink",
+        "count": 1
+      },
+      {
+        "true": "thin",
+        "pred": "woman",
+        "count": 1
+      },
+      {
+        "true": "thin",
+        "pred": "birthday",
+        "count": 1
+      },
+      {
+        "true": "yes",
+        "pred": "no",
+        "count": 1
+      },
+      {
+        "true": "cool",
+        "pred": "drink",
+        "count": 1
+      },
+      {
+        "true": "cool",
+        "pred": "apple",
+        "count": 1
+      },
+      {
+        "true": "cool",
+        "pred": "chair",
+        "count": 1
+      },
+      {
+        "true": "like",
+        "pred": "yes",
+        "count": 1
+      },
+      {
+        "true": "deaf",
+        "pred": "bird",
+        "count": 1
+      }
+    ]
+  },
+  "single": {
+    "top1_acc": 43.28,
+    "top5_acc": 75.62,
+    "macro_f1": 0.3889,
+    "weighted_f1": 0.3963,
+    "model_size_mb": 2.694,
+    "inference_fps": 1869.7,
+    "inference_ms_per_sample": 0.535
+  }
+}

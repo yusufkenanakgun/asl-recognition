@@ -98,21 +98,7 @@ F1 averages over 98 effective classes.
 \section{Letter Recognition Results}
 \label{sec:results-letters}
 
-Before reporting the offline numbers, the conditions under which they
-were measured should be made explicit. The ASL Alphabet test partition
-is a random split of a single-source Kaggle dataset whose images were
-collected by one contributor in a controlled indoor setting with a
-uniform background and a fixed camera distance. The same person,
-lighting, and background therefore appear in both the training and
-the test partitions, and the offline Top-1 figures reported in this
-section should be read as a sanity check that the training pipeline
-converges and that the exported checkpoints preserve accuracy --- not
-as a capability measure for unseen signers, rooms, or cameras. The
-on-device manual evaluation in
-Section~\ref{sec:results-qualitative-letters} is where the actual
-capability signal is sought.
-
-With that caveat stated, both letter classifiers reach near-ceiling
+Both letter classifiers reach near-ceiling
 accuracy on the ASL Alphabet test partition. EfficientNet-B0 produces
 \emph{zero} misclassifications on the 13\,050 test images and therefore
 reaches a Top-1 accuracy of exactly 100\,\%, with a per-class F1 score
@@ -279,27 +265,11 @@ of the single-model variant; the ensemble line in
 Table~\ref{tab:results-words-seeds} is the model that the Android demo
 exposes as ``BiLSTM Ensemble (x5)''.
 
-Before reporting the numbers, the scientific status of what is being
-measured here should be made explicit. The 201-clip test partition is the
-canonical \emph{person-mixed} WLASL-100 split: the same signer can appear
-in both the training and the test partitions, and this is the protocol
-under which every entry of the literature comparison in
-Table~\ref{tab:results-wlasl-lit} reports its number. The offline Top-1
-figures in this section should therefore be read as a
-\emph{protocol-comparable benchmark point} on that canonical split,
-i.e.\ a like-for-like comparison axis against the published baselines,
-rather than as a signer-independent generalization estimate. A clean
-generalization estimate would require a signer-disjoint evaluation that
-the public WLASL-100 release does not directly support and that the
-present thesis does not construct. What this chapter \emph{does} report
-is therefore bracketed: an inflated-by-design offline benchmark number
-under the canonical protocol
-(Sections~\ref{sec:results-words}--\ref{sec:results-errors}) and a
-known-sign on-device upper bound under naturalistic camera conditions
-(Section~\ref{sec:results-qualitative-words}). The band between the two
--- the actual production-conditions accuracy on a signer the system has
-never seen -- is left explicitly unmeasured and is revisited as the
-headline limitation in Section~\ref{sec:conclusion-limitations}.
+The 201-clip test partition is the canonical person-mixed WLASL-100
+split (Section~\ref{sec:results-methodology}); the numbers below are
+reported on that protocol and the unmeasured signer-independent
+generalization band is revisited in
+Section~\ref{sec:conclusion-limitations}.
 
 \begin{table}[h]
 \centering
@@ -439,11 +409,9 @@ hands-only landmark model among the available approaches.
 \begin{table}[h]
 \centering
 \caption[Reported Top-1 accuracy on the WLASL-100 test split (literature comparison).]{Reported Top-1 accuracy on the WLASL-100 test split, under
-the dataset's canonical person-mixed protocol shared by all entries.
+the canonical person-mixed protocol shared by all entries.
 Numbers are quoted from each publication; the modality column
-distinguishes RGB, body pose, body+hand pose and hand-only inputs.
-The table is a comparability axis on the canonical protocol, not a
-ranking of signer-independent generalization.}
+distinguishes RGB, body pose, body+hand pose and hand-only inputs.}
 \label{tab:results-wlasl-lit}
 \begin{tabular}{llll}
 \toprule

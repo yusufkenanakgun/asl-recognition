@@ -1,0 +1,32 @@
+{
+  "config": {
+    "data_dir": "data\\faz6_v2\\landmarks_wlasl100",
+    "n_models": 3,
+    "input_size": 128,
+    "hidden_size": 192,
+    "augment": true,
+    "mixup_alpha": 0.2,
+    "use_weighted_sampler": false,
+    "epochs": 100,
+    "batch_size": 32
+  },
+  "individual_val_acc": [
+    53.91,
+    50.62,
+    51.03
+  ],
+  "mean_val_acc": 51.85,
+  "std_val_acc": 1.46,
+  "elapsed_minutes": 5.55,
+  "ensemble": {
+    "individual_val_acc": [
+      53.91,
+      50.62,
+      51.03
+    ],
+    "individual_mean": 51.85,
+    "ensemble_val_acc": 53.5,
+    "ensemble_gain_vs_best_single": -0.41,
+    "num_models": 3
+  }
+}

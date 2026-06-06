@@ -1,0 +1,169 @@
+ON-DEVICE AMERICAN SIGN LANGUAGE RECOGNITION
+Presentation Speaking Script (English) — v2, matches the updated deck
+Yusuf Kenan Akgün — CSE492 Senior Project Defense
+
+Target length: ~6-7 minutes. Lines in [brackets] are delivery cues, not read aloud.
+
+
+========================================================
+SLIDE 1 — COVER  (~30 seconds)
+========================================================
+
+Good morning. My name is Yusuf Kenan Akgün, and today I'm presenting my
+senior project: an on-device American Sign Language recognition system.
+
+The core idea is in the subtitle — I built a sign language recognizer
+that runs entirely on a phone, and I used it to compare two approaches:
+one based on raw camera images, and one based on hand landmarks.
+
+[gesture to the screenshots on the right]
+
+What you see on the right is the actual application running on a real
+phone, recognizing the letters A, B and X in real time. So everything I
+describe today is a working app, not a simulation.
+
+
+========================================================
+SLIDE 2 — INTRODUCTION  (~75 seconds)
+========================================================
+
+Let me start with the problem, because it shaped every decision.
+
+Sign language is the everyday language of tens of millions of people,
+but it's still underserved by consumer technology. Voice assistants,
+captions, translation tools — they all assume audio input by default,
+which excludes sign language users. So visual recognition models become
+necessary.
+
+There is good research on this. But here is the gap I built my project
+around: the literature optimizes offline accuracy — accuracy on a
+powerful server — and rarely asks about deployability. In other words,
+the accuracy is measured on a server, not on a consumer phone. Being
+accurate on a server is not the same as being usable on a phone, and
+that distinction is the heart of my thesis.
+
+I addressed two complementary tasks. The first is letters —
+fingerspelling — 29 static classes: the 26 ASL letters plus three
+auxiliary classes, delete, space, and nothing. The second is words. I
+use only the WLASL-100 benchmark; the larger 300, 1000 and 2000 subsets
+are out of scope.
+
+And the one hard constraint across both tasks: everything runs one
+hundred percent on the device. No server.
+
+[point to the flow on the right]
+
+On the right you see the recognition flow for the sign "drink" — three
+steps: Collect, Ready, Result. The app collects a 32-frame window and
+the BiLSTM latches the top prediction.
+
+
+========================================================
+SLIDE 3 — SYSTEM ARCHITECTURE  (~55 seconds)
+========================================================
+
+Architecturally, the system is two separate worlds connected by one
+artefact.
+
+[trace left to right]
+
+On the left is the offline world — PyTorch, on my computer. You see the
+two datasets, and the four models I train: EfficientNet-B0, the landmark
+MLP, the single BiLSTM, and the five-seed ensemble.
+
+On the right is the device world — Android, in Kotlin. CameraX feeds
+frames, MediaPipe extracts the landmarks, the Inference Manager runs the
+active model, and the UI in Compose shows the result.
+
+The bridge between these two worlds is TensorFlow Lite. I train in
+PyTorch, convert to TFLite, and that single converted checkpoint is what
+actually runs on the phone. One artefact bridges two worlds — four
+models, two datasets, one Android app.
+
+
+========================================================
+SLIDE 4 — IMPLEMENTATION  (~80 seconds)
+========================================================
+
+A little detail on how this was built.
+
+[point to the models]
+
+On the letters task there are two models: EfficientNet-B0, which is an
+image-based model on 224 RGB input with ImageNet pretraining, and the
+landmark MLP, which is a landmark-based model on the 63-dimensional
+MediaPipe pose. On the words task, the BiLSTM, which also uses
+landmarks — a two-hand stream — and the five-seed ensemble on top.
+
+[point to the datasets]
+
+Two datasets. For letters, the ASL Alphabet — 87,000 images. For words,
+WLASL-100, and here I had a real problem: many of the original videos
+are link-rotted in 2026. The Kaggle bundle alone gave me about a
+thousand clips. So I wrote a recovery pipeline with yt-dlp that pulled
+back more videos from sign-language dictionary sites, taking me to 1,465
+clips — a 44 percent increase.
+
+[point to the ablation pillars]
+
+Now, my word model did not start at 60 percent — it started at 20. I
+improved it through a forward-additive ablation, where I isolate each
+change to measure its own gain, grouped into four pillars. First, data
+engineering — the recovery I just mentioned, plus re-balancing. Second,
+extraction — moving from one hand to two, with hand-crop normalization.
+Third, the training recipe — augmentation, mixup, and a weighted
+sampler. And fourth, the five-seed ensemble.
+
+[emphasize]
+
+The key finding: data engineering was the single largest lever — about
+sixteen points on its own. On this dataset, more data beat every
+training trick I tried.
+
+
+========================================================
+SLIDE 5 — TESTS & RESULTS  (~95 seconds)
+========================================================
+
+Now the results — and the main finding of the project lives here.
+
+[point to the letters table — slow down]
+
+Look at the letters. Offline, on the test set, the image model scores a
+perfect 100 percent and the landmark model 99.4. So offline, the image
+model is the default winner. And recall it ships in 15.71 megabytes,
+while the landmark model is just 0.24 — roughly 65 times smaller.
+
+But watch the budget phone — the TECNO. The image model drops to 92.9
+percent, while the landmark model stays at 100. The ranking inverts. The
+model that looked best in the lab becomes the worse one on a cheap
+phone. The reason is that the landmark abstraction discards exactly the
+camera noise — white balance, slight blur — that a pixel-based model is
+sensitive to.
+
+[point to the words table]
+
+For words, the ensemble reaches 56 percent offline and clears my 40
+percent acceptance bar comfortably. On the phone it gets 49 percent
+Top-1, and 72 percent Top-3.
+
+Now compare single and ensemble on the phone. The ensemble barely moves
+Top-3 — 71 to 72 — but it lifts Top-1 from 38 to 49. So it isn't finding
+new answers; it's re-ranking labels the single model already kept inside
+its Top-3.
+
+[point to the latency table]
+
+And latency closes the argument. On the flagship Xiaomi, every model
+runs at 30 FPS. On the budget TECNO, the word ensemble takes 665
+milliseconds per prediction — at that point it's no longer interactive,
+which is why I couldn't evaluate the word task on the TECNO at all.
+
+[pause — the punchline]
+
+So the conclusion of the whole project is one sentence: the right model
+is not universal — it is device-conditional. On a budget phone, you ship
+the landmark model; on a flagship, you can afford the heavier one. That
+is the practical guideline this thesis delivers.
+
+Thank you for listening — I'm happy to take any questions.

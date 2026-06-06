@@ -1,0 +1,312 @@
+================================================================
+ANLATIM 2 — MODEL MİMARİLERİ
+================================================================
+
+Bu dosyada projedeki 3 farklı modeli (EfficientNet, MLP, BiLSTM)
+ANLAMAK için gereken 10 mimari terimi var.
+
+Sıra önemli: önce CNN ailesi (EfficientNet'i kapsar), sonra MLP
+(en basit ağ), sonra RNN ailesi (LSTM/BiLSTM), en sonda da hepsine
+uygulanabilen iki teknik: dropout ve transfer learning.
+
+================================================================
+1. CNN — CONVOLUTIONAL NEURAL NETWORK (EVRİŞİMLİ SİNİR AĞI)
+================================================================
+KISA TANIM:
+  Görüntü/imaj işlemek için tasarlanmış model ailesi. Çekirdek
+  fikir: küçük filtreler (kernel — örn. 3×3) resmin üstünde
+  KAYDIRILIR, her konumda küçük bir bölgeyi özetleyen sayı üretir.
+  Aynı filtre her piksele uygulanır → "translation invariance"
+  (objenin resimde nerede olduğundan bağımsızlık).
+
+  Katmanlar yığıldıkça hiyerarşi oluşur:
+    İlk katmanlar → kenar, renk geçişi
+    Orta katmanlar → doku, basit şekiller
+    Üst katmanlar → karmaşık şekiller (parmak ucu, avuç içi)
+
+PROJEDE NEREDE:
+  - EfficientNet-B0 bir CNN'dir.
+  - Girdi: [3, 224, 224] tensor (RGB harf fotoğrafı)
+  - Çıktı: [29] tensor (29 ASL harfi için skor)
+
+NEDEN:
+  Bir A harfini tanımak için modelin "parmak şekli + el yönü +
+  arka plan ayrımı" gibi görsel ipuçlarını öğrenmesi lazım. CNN
+  bunu yapmak için icat edildi. Fully-connected ağ aynı şeyi
+  yapamaz çünkü her piksel için ayrı parametre gerekir → milyarlarca
+  parametre + overfitting.
+
+================================================================
+2. EFFICIENTNET-B0
+================================================================
+KISA TANIM:
+  Google'ın 2019'da yayınladığı CNN ailesi (EfficientNet-B0 → B7).
+  "Compound Scaling" yöntemiyle ağın 3 boyutunu (DERİNLİK = katman
+  sayısı, GENİŞLİK = kanal sayısı, ÇÖZÜNÜRLÜK = girdi imaj boyutu)
+  AYNI ANDA dengeli büyütüyor. Klasik CNN'ler genelde sadece birini
+  büyütüyordu (örn. sadece daha derin) → verim düşüktü.
+
+  B0 = en küçük versiyon (4.1M parametre, 224×224 girdi).
+
+PROJEDE NEREDE:
+  - src/model.py: torchvision.models.efficientnet_b0(weights=...)
+  - Son katmanı 29 sınıfa göre değiştirdik:
+      model.classifier[1] = nn.Linear(in_features, 29)
+  - Test accuracy: %100 (ASL Alphabet, 29 sınıf)
+  - Checkpoint boyutu: 15.71 MB (TFLite sonrası 16.07 MB)
+
+NEDEN:
+  Mobil için kritik üçlü: DOĞRULUK + KÜÇÜK BOYUT + DÜŞÜK LATENCY.
+  EfficientNet-B0 bu üçünde ResNet/MobileNet karışımlarına kıyasla
+  daha iyi denge sunuyor. Tezde "harf görevinde mobile-friendly
+  CNN" tercih sebebi: 4.1M parametre, ImageNet pretrain'li, küçük
+  TFLite çıktısı veriyor.
+
+================================================================
+3. MLP — MULTI-LAYER PERCEPTRON (ÇOK KATMANLI ALGILAYICI)
+================================================================
+KISA TANIM:
+  En basit yapay sinir ağı türü. Sadece "dense / fully-connected"
+  (tam bağlantılı) katmanlardan oluşur. Her katman girdi vektörünü
+  bir AĞIRLIK MATRİSİ ile çarpıp + bias ekleyip aktivasyondan
+  geçirir. Girdi 1B vektör; konvolüsyon yok, dizi yok.
+
+  Yapı: [Linear → BatchNorm → ReLU → Dropout] × N → Linear (çıkış)
+
+PROJEDE NEREDE:
+  - src/train_mlp.py içindeki LandmarkMLP sınıfı.
+  - Girdi: 63 sayı (MediaPipe landmark — 21 nokta × 3 koordinat,
+    tek el için).
+  - Yapı: 63 → 256 → 128 → 64 → 29
+      Her gizli katmanda: Linear + BatchNorm + ReLU + Dropout(0.3)
+  - Parametre: ~60K
+  - Checkpoint: 0.24 MB
+  - Test accuracy: %99.38 (landmark başarılı olduğunda)
+
+NEDEN:
+  Landmark verisi zaten ÖZÜTLENMİŞ özellik (raw piksel değil, 63
+  anlamlı sayı). Bu kadar yapılandırılmış girdi için karmaşık CNN
+  gereksiz — basit bir MLP yeterli. Sonuç: 60 kat daha küçük model
+  + 90.000 FPS inference + neredeyse aynı doğruluk.
+
+================================================================
+4. RNN — RECURRENT NEURAL NETWORK (TEKRARLAYAN SİNİR AĞI)
+================================================================
+KISA TANIM:
+  Sıralı (sequence) veriler için tasarlanmış ağ ailesi. CNN imajı
+  bir kerede görür; RNN ise sıralı bir DİZİYİ (örn. 32 frame'lik
+  video) zaman içinde TEK TEK işler. Her adımda:
+    yeni gizli durum = f(önceki gizli durum, mevcut girdi)
+  Yani önceki adımların "hatırası" sonrakine taşınır.
+
+PROJEDE NEREDE:
+  - DOĞRUDAN vanilla RNN kullanmadık; LSTM (RNN'in iyileştirilmiş
+    versiyonu) kullandık. Ama LSTM'i anlamak için RNN mantığını
+    bilmek şart.
+
+NEDEN:
+  Bir KELİME işareti tek bir karede görünmez — örn. "hello" işareti
+  birkaç saniye süren bir el hareketidir. Zaman içindeki değişimi
+  yakalamak için modelin "geçmişi hatırlaması" gerekir → RNN ailesi.
+
+================================================================
+5. LSTM — LONG SHORT-TERM MEMORY
+================================================================
+KISA TANIM:
+  Vanilla RNN'in sorunu: uzun dizilerde "unutma" başlar (vanishing
+  gradient). LSTM bu sorunu KAPILAR (gates) ile çözer:
+    - INPUT GATE  : yeni bilgiyi ne kadar al
+    - FORGET GATE : eski bilgiyi ne kadar at
+    - OUTPUT GATE : bilginin ne kadarını dışarı ver
+
+  Bir de hücre içinde uzun-vadeli hafıza tutan "cell state" var —
+  bu, gradient'in dizi boyunca akmasına izin verir.
+
+PROJEDE NEREDE:
+  - src/faz6/train_v2.py içindeki LSTMClassifier.
+  - PyTorch'ta tek satır:
+      self.lstm = nn.LSTM(input_size=128, hidden_size=192,
+                          num_layers=2, bidirectional=True,
+                          dropout=0.3)
+  - 32-frame'lik landmark dizisini alıp tek bir "kelime tahmini"
+    veriyor.
+
+NEDEN:
+  WLASL kelime klipleri 32 frame'e normalize edildi. Bir işaretin
+  başındaki ve ortasındaki el pozları birlikte anlam taşıyor —
+  LSTM bu zamansal ilişkiyi modelleyebilir.
+
+================================================================
+6. BiLSTM — BIDIRECTIONAL LSTM
+================================================================
+KISA TANIM:
+  LSTM tek yönde okur (sol → sağ). BiLSTM AYNI DİZİYİ iki yönlü
+  okur: bir LSTM soldan sağa, bir LSTM sağdan sola. İki yönün
+  gizli durumları BİRLEŞTİRİLİR (concatenate).
+
+  Sonuç: her adımda hem "geçmişten gelen bağlam" hem "gelecekten
+  gelen bağlam" elinde olur.
+
+PROJEDE NEREDE:
+  - Aynı nn.LSTM satırında: bidirectional=True
+  - Çıktı boyutu hidden_size'ın 2 katı olur: 192 × 2 = 384
+  - Sonra Linear(384, 128) → ReLU → Dropout → Linear(128, 100)
+    ile 100 kelimeye projeksiyon.
+
+NEDEN:
+  İşaret dilinde bir kelimenin "ortası" çoğu zaman "sonu"ndan da
+  ipucu alır — örn. başlangıç pozu "thanks" ve "thank you" için
+  benzer olabilir, sonu farklı. İki yönde okumak ayrımı kuvvetlendirir.
+
+================================================================
+7. HIDDEN STATE (GİZLİ DURUM)
+================================================================
+KISA TANIM:
+  RNN/LSTM'in zaman içinde taşıdığı "hafıza" vektörü. Her zaman
+  adımında güncellenir. Hidden_size = bu vektörün boyutu — yani
+  modelin ne kadar bilgi tutabileceğini belirler.
+
+  hidden_size küçük → model basit, az hafıza
+  hidden_size büyük → model güçlü ama parametre patlar, overfit riski
+
+PROJEDE NEREDE:
+  - BiLSTM: hidden_size = 192 (her yön için)
+  - Ablation: 128 hidden ile denedik, 192 daha iyi sonuç verdi.
+  - LSTM çıktısı [batch, 32, 384] (384 = 192 × 2 → bidirectional)
+  - Son zaman adımı veya ortalama alınıp Linear'a verilir.
+
+NEDEN:
+  Bu sayı bir "hiperparametre" — sen seçersin. Tezde "192" seçilme
+  sebebi: ablation'da daha küçük (128) yeterince ifade gücü vermedi,
+  daha büyük (256) overfit'e meyilli görüldü. 192 sweet-spot.
+
+================================================================
+8. DROPOUT
+================================================================
+KISA TANIM:
+  Eğitim sırasında her ileri geçişte rastgele bazı nöronları
+  KAPAR (çıktısını sıfır yapar). Sebebi: model belirli birkaç
+  nörona aşırı bel bağlamasın, dağılmış öğrensin.
+
+  Inference (telefonda) sırasında dropout DEVRE DIŞIDIR — tüm
+  nöronlar açık çalışır. Bu otomatik (model.eval() ile).
+
+  Dropout oranı 0.3 → her seferinde nöronların %30'u kapatılır.
+
+PROJEDE NEREDE:
+  - MLP: nn.Dropout(0.3) her gizli katmandan sonra (src/train_mlp.py)
+  - BiLSTM: nn.LSTM(..., dropout=0.3) — LSTM katmanları arasında
+  - BiLSTM sonrası FC: nn.Dropout(dropout) ek olarak da var.
+
+NEDEN:
+  Overfitting'i azaltmanın en yaygın ve basit yolu. WLASL-100 küçük
+  bir veri seti (1.465 video) — overfit kolay olur. Dropout zorunlu.
+
+================================================================
+9. TRANSFER LEARNING (TRANSFER ÖĞRENME)
+================================================================
+KISA TANIM:
+  Başka birinin başka bir veri setinde önceden eğittiği modeli
+  alıp KENDİ görevine uyarlamak. Pretrained ağırlıklar başlangıç
+  noktası olur — modelin "sıfırdan dünyayı öğrenmesi" gerekmez.
+
+  Klasik senaryo: ImageNet'te (1.2 milyon imaj, 1000 sınıf)
+  eğitilmiş model → senin küçük veri setinde fine-tune.
+
+PROJEDE NEREDE:
+  - src/model.py:
+      efficientnet_b0(weights=EfficientNet_B0_Weights.IMAGENET1K_V1)
+  - Yani EfficientNet'i ImageNet ağırlıklarıyla yüklüyoruz, sonra
+    son katmanı 29 sınıfa göre değiştiriyoruz.
+  - MLP ve BiLSTM transfer learning kullanmıyor (landmark verisi
+    için pretrained model yok).
+
+NEDEN:
+  87.000 ASL harf imajı, sıfırdan bir CNN eğitmek için AZ. ImageNet'te
+  öğrenilmiş "kenar, doku, şekil" özellikleri ASL harfine de yarar
+  → yüksek accuracy + az epoch + az overfit.
+
+================================================================
+10. FINE-TUNING vs FREEZING (DONDURMA) — İKİ AŞAMALI EĞİTİM
+================================================================
+KISA TANIM:
+  Transfer learning kullanırken iki seçenek var:
+    - FREEZING : Pretrained katmanların ağırlıklarını DONDUR
+                 (eğitim sırasında değişmesin). requires_grad=False.
+                 Sadece eklediğin yeni son katman eğitilir.
+                 → Hızlı, az veri yetebilir, az overfit riski.
+    - FINE-TUNING : Tüm ağı (veya son birkaç katmanı) küçük learning
+                    rate ile eğit. Pretrained "bilgisini" koruyup
+                    senin göreve hafifçe yamamış olursun.
+                    → Yavaş ama genelde daha yüksek accuracy.
+
+  Yaygın strateji: ÖNCE freeze + son katman eğit (warm-up), SONRA
+  unfreeze + tüm ağı küçük lr ile fine-tune (iki aşamalı eğitim).
+
+PROJEDE NEREDE:
+  - src/model.py:
+      create_model(pretrained=True, freeze_backbone=True)
+        → backbone dondurulur, sadece classifier eğitilir.
+      unfreeze_model(model)
+        → ikinci aşamada tüm backbone serbest kalır.
+  - src/train.py: bu iki aşama sırayla yapılır (önce freeze epochs,
+    sonra unfreeze epochs).
+
+NEDEN:
+  Sıfırdan tüm ağı oynatırsan, pretrained "bilgisini" yıkabilirsin
+  (catastrophic forgetting). İki aşamalı yaklaşım: önce son katmanı
+  oturt, sonra backbone'u dikkatlice uyarla → en güvenli yol.
+
+================================================================
+*** PROJEMİZDEKİ 3 MODELİN ÖZET HARITASI ***
+================================================================
+
+  ┌────────────┬─────────────────┬──────────────┬────────────────┐
+  │ Model      │ Mimari ailesi   │ Görev        │ Girdi          │
+  ├────────────┼─────────────────┼──────────────┼────────────────┤
+  │ EfficientN │ CNN (transfer)  │ Harf (29)    │ [3, 224, 224]  │
+  │ MLP        │ Fully-Connected │ Harf (29)    │ [63]           │
+  │ BiLSTM     │ RNN (BiLSTM)    │ Kelime (100) │ [32, 128]      │
+  └────────────┴─────────────────┴──────────────┴────────────────┘
+
+  - CNN  : piksel → desen      (görsel sınıflandırma)
+  - MLP  : sayı vektörü → sınıf (yapılandırılmış girdi)
+  - RNN  : dizi → tek tahmin    (zamansal/video)
+
+  Her modelde dropout var. Sadece EfficientNet'te transfer learning
+  var (ImageNet pretrain). MLP ve BiLSTM sıfırdan eğitildi çünkü
+  landmark/sequence için pretrained model yok.
+
+================================================================
+JÜRİDE GELEBİLECEK SORULAR — KISA REFLEKS CEVAPLARI
+================================================================
+
+S: "EfficientNet yerine ResNet/MobileNet niye kullanmadın?"
+C: Mobile-friendly üçlü (boyut + accuracy + latency) için EfficientNet-B0
+   en iyi denge — compound scaling. ResNet daha ağır, MobileNet daha
+   az doğru. EfficientNet ImageNet'te 76.3% accuracy / 4.1M parametre
+   ile bu üçlüde optimum.
+
+S: "Vanilla LSTM yerine niye BiLSTM?"
+C: İşaret hareketleri çift yönlü bağlam taşır — başlangıç pozu sonun
+   ipucu olabilir, sonu başın. İki yönde okumak ayrımı kuvvetlendirir.
+   Maliyet sadece 2 kat hidden state.
+
+S: "Niye Transformer değil?"
+C: WLASL-100 veri seti küçük (1.465 video). Transformer milyonlarca
+   örneğe susayan bir mimari, küçük veride overfit eder. BiLSTM 4.7M
+   parametre ile bu veri büyüklüğüne daha uygun. Future work olarak
+   tezde de transformer denenmesi öneriliyor.
+
+S: "Niye fine-tune yerine sadece freeze yapmadın?"
+C: Sadece freeze ile %100'e ulaşmak zor olurdu — ASL imajları
+   ImageNet'ten farklı (yakın çekim eller, sade arka plan). İki aşamalı
+   eğitim warm-up sonrası backbone'u dikkatlice uyarladı.
+
+================================================================
+SONRAKİ ADIM
+================================================================
+Bittiyse "anlatım-5 ver" (deployment: ONNX, TFLite, Android tarafı)
+veya istersen önce kod turuna geçelim — train.py + train_v2.py +
+convert_to_tflite.py'yi satır satır anlatırım.
+================================================================

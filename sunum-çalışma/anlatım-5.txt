@@ -1,0 +1,335 @@
+================================================================
+ANLATIM 5 — DEPLOYMENT (Eğitilmiş Model → Telefonda Çalışan App)
+================================================================
+
+Bu dosya, modeli RTX 3050 makinende eğittikten sonra Android
+telefonda nasıl koşacağının zincirini anlatır. 10 terim, sırayla
+okuyunca dönüşüm hattının her halkası oturur.
+
+================================================================
+1. ONNX (Open Neural Network Exchange)
+================================================================
+KISA TANIM:
+  Framework'lerden BAĞIMSIZ "ara model formatı". 2017'de Microsoft +
+  Meta tarafından açıldı, Google da destekliyor. Bir modeli ONNX'e
+  kaydedersen, sonra başka bir framework (TensorFlow, Caffe2, OpenVINO,
+  TFLite) ona okuyabilir.
+
+  Felsefe: "PyTorch ↔ TFLite gibi her çifte özel dönüştürücü yazmak
+  yerine, herkes ONNX'e/dan dönüşsün."
+
+  Dosya uzantısı: .onnx
+
+PROJEDE NEREDE:
+  - src/convert_to_tflite.py: PyTorch modeli önce ONNX'e ediliyor:
+      torch.onnx.export(model, dummy, "model.onnx", ...)
+  - Sonra ONNX'ten TFLite'a geçiliyor (onnx2tf veya onnx-tf üzerinden).
+
+NEDEN:
+  PyTorch → TFLite arasında DOĞRUDAN köprü yok (Meta ve Google ayrı
+  ekosistemler). ONNX bu boşluğu kapatan endüstri-standart ara durak.
+  Bizim üç modelimizi de (EfficientNet, MLP, BiLSTM) bu hattan
+  geçirdik.
+
+================================================================
+2. TFLite (TensorFlow Lite)
+================================================================
+KISA TANIM:
+  Google'ın mobil/edge cihazlar için hazırladığı HAFIF model formatı
+  + çalıştırma motoru (runtime). TensorFlow'un mobil sürümü.
+
+  İki parçası:
+    - FORMAT  : .tflite uzantılı dosya (FlatBuffer ile serileştirilmiş)
+    - RUNTIME : Android/iOS tarafında bu dosyayı yorumlayıp çalıştıran
+                kütüphane (org.tensorflow.lite.Interpreter)
+
+  Avantajları:
+    + Küçük dosya boyutu (PyTorch checkpoint'lerine kıyasla %30-50 ↓)
+    + Hızlı CPU çalıştırma (XNNPACK ile)
+    + Quantization (float32 → int8) desteği (boyut + hız ↑)
+    + GPU/NNAPI delegate ile hızlandırma seçenekleri
+
+PROJEDE NEREDE:
+  - models/tflite/ klasöründe 3 model:
+      efficientnet_b0.tflite    (~16 MB)
+      landmark_mlp.tflite       (~0.24 MB)
+      lstm_seed{0..4}.tflite    (~5.6 MB × 5)
+  - Android: app/src/main/assets/ altında bu dosyaları taşır.
+
+NEDEN:
+  PyTorch (.pth) Android'de doğrudan çalışmaz; PyTorch Mobile var ama
+  ekosistemi zayıf. Google ekosistemi (MediaPipe Tasks, Android NDK,
+  XNNPACK, NNAPI) TFLite bekliyor → standart seçim TFLite.
+
+================================================================
+3. DÖNÜŞÜM HATTI: PyTorch → ONNX → TFLite
+================================================================
+KISA TANIM:
+  Üç adımlı zincir:
+    [1] PyTorch (.pth)  → .onnx
+        torch.onnx.export(model, dummy_input, "model.onnx", ...)
+    [2] .onnx           → .pb (TensorFlow SavedModel)
+        onnx-tf veya onnx2tf kütüphanesi ile.
+    [3] .pb            → .tflite
+        tf.lite.TFLiteConverter ile.
+
+  Her adımda numerik PARITY (eşdeğerlik) test edilebilir: aynı girdi
+  → her formatta benzer çıktı (küçük floating-point farklarıyla).
+
+PROJEDE NEREDE:
+  - src/convert_to_tflite.py — tek script tüm zinciri yürütür.
+  - Çağrı: python src/convert_to_tflite.py --only efficientnet
+  - 3 model için ayrı fonksiyon: convert_efficientnet(), convert_mlp(),
+    convert_lstm().
+
+NEDEN:
+  "Bir adımda olmaz mı?" — hayır, çünkü:
+    - PyTorch ve TF iç temsil farklı (computation graph stilleri).
+    - Bazı op'lar (örn. dynamic shape, custom layer) zincirde
+      dönüşmüyor; tek tek elle düzeltmek gerekir.
+    - Bu yüzden dönüşüm sonrası MUTLAKA parity testi yaparız —
+      aynı girdiyi orijinal PyTorch modeli ve dönüştürülmüş TFLite
+      modeline veririz, çıktılar yakın mı kontrol ederiz.
+
+================================================================
+4. XNNPACK DELEGATE
+================================================================
+KISA TANIM:
+  Google'ın açtığı, mobil CPU'lar için elle optimize edilmiş hızlı
+  matris/konvolüsyon kütüphanesi. ARM ve x86'da SIMD (NEON, AVX)
+  yönergelerini doğrudan kullanır.
+
+  "Delegate" = TFLite'ın "bu operasyonu sen yap" diye dış kütüphaneye
+  delege ettiği eklenti mekanizması.
+
+PROJEDE NEREDE:
+  - Android tarafı: TFLiteRunner.kt
+      val opts = Interpreter.Options().apply { setNumThreads(N) }
+      // XNNPACK varsayılan olarak DEVREDE
+  - Yani biz özel kod yazmadık — TFLite 2.16'da XNNPACK default açık.
+
+NEDEN:
+  CPU üzerinde TFLite'ı 2-4× hızlandırır. GPU delegate desteği
+  olmayan/kırılgan cihazlarda ana hızlandırma kaynağı bu.
+
+================================================================
+5. GPU DELEGATE + FALLBACK STRATEJİSİ
+================================================================
+KISA TANIM:
+  Telefonun GPU'sunu (Mali, Adreno, vb.) TFLite'a hızlandırıcı olarak
+  bağlama. OpenGL veya OpenCL üzerinden çalışır. CPU'dan 2-10× hızlı
+  olabilir AMA her cihazda desteklenmez (driver hatası, op uyumsuzluğu).
+
+  FALLBACK = "GPU'da olmuyorsa CPU+XNNPACK'e otomatik geç."
+
+PROJEDE NEREDE:
+  - inference/TFLiteRunner.kt:
+      useGpu=true istenirse GPU delegate denenir;
+      başarısız olursa otomatik CPU+XNNPACK'e düşer (try-catch).
+  - EfficientNetClassifier.kt yorumu:
+      "Cihaz uyumsuzsa TFLiteRunner CPU+XNNPACK'e otomatik düşer."
+
+NEDEN:
+  Sahada gerçek: GPU delegate her telefonda çalışmıyor. Uygulama
+  kapanmasın diye **graceful degradation** prensibi ile fallback'i
+  built-in yaptık. Bu tez Ch.4'te NFR-graceful failure başlığı altında
+  geçer.
+
+================================================================
+6. TFLITE INTERPRETER (Android Runtime)
+================================================================
+KISA TANIM:
+  Android JVM'inde TFLite modelini yorumlayıp çalıştıran sınıf.
+  org.tensorflow.lite.Interpreter — Java/Kotlin API'si.
+
+  Akış:
+    1) Asset'ten .tflite dosyasını MEMORY-MAP ile yükle (zero-copy)
+    2) Interpreter.Options ayarla (delegate, thread sayısı)
+    3) val interpreter = Interpreter(modelBuffer, opts)
+    4) Inference:
+         val input  = ... // ByteBuffer veya FloatArray
+         val output = Array(1) { FloatArray(numClasses) }
+         interpreter.run(input, output)
+
+PROJEDE NEREDE:
+  - inference/TFLiteRunner.kt — ortak runner.
+  - Üzerine sarmalayıcılar:
+      EfficientNetClassifier.kt
+      MlpClassifier.kt
+      LstmClassifier.kt
+      EnsembleLstmClassifier.kt  (5 Interpreter paralel)
+  - util/AssetUtils.kt — memory-map ile .tflite yükleme.
+
+NEDEN:
+  Her model için ayrı Interpreter instance gerekli (paylaşılırsa thread
+  safety sorunu). Ensemble'da 5 Interpreter aynı anda elde tutuluyor.
+
+================================================================
+7. CAMERAX
+================================================================
+KISA TANIM:
+  Android'in yeni nesil kamera API'si (Jetpack). Eski Camera2'nin
+  karmaşıklığını saklayan, lifecycle'a entegre, sade bir kütüphane.
+  Üç ana use-case'i var:
+    - Preview         : ekranda kamera önizlemesi
+    - ImageAnalysis   : her kareyi callback'le al → modele ver
+    - ImageCapture    : fotoğraf çek (biz kullanmıyoruz)
+
+PROJEDE NEREDE:
+  - camera/FrameAnalyzer.kt — her gelen kareyi MediaPipe + classifier'a
+    pipeline'lar.
+  - ui/components/CameraSurface.kt — Compose ile preview'i ekrana basar.
+  - ImageAnalysis backpressure stratejisi: STRATEGY_KEEP_ONLY_LATEST
+    (yetişemediği kareleri at, en güncel kareyle çalış).
+
+NEDEN:
+  Lifecycle entegrasyonu (aktivite öldüğünde otomatik temizlik), tüm
+  Android sürümlerinde tutarlı davranış. Camera2 ile aynı şeyi yapmak
+  yüzlerce satır boilerplate gerektirirdi.
+
+================================================================
+8. JETPACK COMPOSE
+================================================================
+KISA TANIM:
+  Android'in declarative UI framework'ü (Google, 2021). XML layout +
+  imperative findViewById dünyasının yerini aldı.
+
+  Felsefe: "UI = state'in fonksiyonu". State değişince Compose
+  ekranı OTOMATİK yeniden çizer (recomposition).
+    @Composable
+    fun MyScreen(state: UiState) { Text(state.prediction) }
+
+PROJEDE NEREDE:
+  - Tüm UI Compose ile yazıldı:
+      ui/letters/LettersScreen.kt
+      ui/words/WordsScreen.kt
+      ui/home/HomeScreen.kt
+      ui/components/Top3Panel.kt, FpsBadge.kt, ModelToggle.kt, ...
+  - ViewModel'lerden gelen StateFlow Compose'a beslenir.
+
+NEDEN:
+  Hızlı geliştirme (boilerplate yok), React-benzeri zihinsel model,
+  modern Android'in resmi standardı. ViewModel + StateFlow + Compose
+  üçlüsü gerçek-zamanlı kamera+ML uygulaması için ideal.
+
+================================================================
+9. MEDIAPIPE TASKS (Android — HandLandmarker)
+================================================================
+KISA TANIM:
+  MediaPipe'ın Android için resmi paketi. Hand Landmarker modeli
+  Android'de doğrudan asset olarak yüklenir; içinde **kendi TFLite
+  modeli** zaten gömülüdür.
+
+  Çalışma modu LIVE_STREAM — callback'le anlık landmark döner:
+    HandLandmarkerOptions.builder()
+      .setRunningMode(RunningMode.LIVE_STREAM)
+      .setResultListener { result, _ -> ... }
+
+PROJEDE NEREDE:
+  - mediapipe/HandLandmarkerSource.kt — landmark yayını.
+  - mediapipe/HandsState.kt — landmark verisini app içinde paslar.
+  - preprocessing/LandmarkNormalizer.kt — wrist-relative normalize +
+    presence flag birleştirip 128D feature üretir (BiLSTM için).
+
+NEDEN:
+  El landmark'larını bizim eğitmemize gerek yok — MediaPipe hazır,
+  on-device, doğru çalışıyor. Üstelik MediaPipe tarafı Google'ın
+  XNNPACK + GPU delegate altyapısını kendi kullanıyor → hızlı.
+
+================================================================
+10. LATENCY / FPS / ON-DEVICE MEASUREMENT
+================================================================
+KISA TANIM:
+  - LATENCY (gecikme) : Bir karenin işlenmesi için geçen süre (ms).
+                        "Model girdiyi alıp tahmin çıkarana kadar."
+  - FPS (Frames Per Second): Saniyede işlenen kare sayısı.
+                              Pratik formül: FPS ≈ 1000 / latency_ms
+                              (pipeline tek karede tek inference yapıyorsa)
+  - REAL-TIME EŞİĞİ: 24-30 FPS üstü insan gözüne pürüzsüz görünür;
+                     <15 FPS "kekemeleşmiş" hissedilir.
+
+PROJEDE NEREDE:
+  - util/FpsMeter.kt — bir saniyelik pencerede işlenen kareyi sayar.
+  - ui/components/FpsBadge.kt — köşede canlı FPS gösterir.
+  - Inference latency: TFLiteRunner.kt içinde System.nanoTime() ile
+    her run() çağrısı ölçülür.
+  - Sonuçlar tez Ch.5'te "On-Device Performance Matrix" tablosunda:
+      MLP (letter): 60-100 FPS / 10-16 ms
+      BiLSTM ensemble: 17-30 FPS / 100-665 ms
+
+NEDEN:
+  "Telefonda çalışıyor" iddiasının kanıtı. Tek başına accuracy yeterli
+  değil — kullanıcı yavaş uygulamayı kullanmaz. Tezdeki **mobile-first**
+  mesajının ölçüm yanı bu.
+
+================================================================
+*** ÖZET HATTI — BİR HARFİ TANIMAK İÇİN TELEFONDA NE OLUYOR ***
+================================================================
+
+  KAMERA (CameraX)
+       ↓ ImageAnalysis callback (her ~30 ms)
+  FRAME (Bitmap / ImageProxy)
+       ↓
+  ┌──────────────────────┬──────────────────────────────┐
+  │ IMAGE YOLU           │ LANDMARK YOLU                │
+  │ (EfficientNet)       │ (MLP / BiLSTM)               │
+  ├──────────────────────┼──────────────────────────────┤
+  │ ImageNetNormalizer   │ MediaPipe HandLandmarker     │
+  │   ↓                  │   ↓ landmark callback         │
+  │ Resize 224×224       │ LandmarkNormalizer            │
+  │   ↓                  │ (wrist-relative + presence)   │
+  │ TFLite Interpreter   │   ↓                           │
+  │ (EfficientNet)       │ TFLite Interpreter (MLP)      │
+  │   ↓                  │   veya 32 frame buffer +      │
+  │ Softmax              │   5x LSTM ensemble + ortala   │
+  │   ↓                  │   ↓                           │
+  │ Top-3 sınıf          │ Top-3 sınıf                   │
+  └──────────────────────┴──────────────────────────────┘
+       ↓
+  UI (Jetpack Compose) — Top3Panel + LandmarkOverlay + FpsBadge
+
+================================================================
+JÜRİDE GELEBİLECEK SORULAR — REFLEKS CEVAPLARI
+================================================================
+
+S: "GPU yerine NNAPI delegate denemedin mi?"
+C: NNAPI cihaza göre çok değişken çalışıyor — bazı Android sürümlerinde
+   modelin bazı op'larını CPU'ya geri düşürüyor, performans tahmin
+   edilemez oluyor. XNNPACK CPU delegate'i tüm cihazlarda tutarlı bir
+   baseline veriyor; GPU delegate opt-in, fallback ile güvende.
+
+S: "TFLite quantization (int8) niye kullanmadın?"
+C: Mevcut .tflite'lar float32 — boyut zaten kabul edilebilir (EfficientNet
+   16 MB, BiLSTM 5.6 MB). Quantization yapsam ~4× küçülme + ~%1-2 doğruluk
+   kaybı olurdu; bizim hedefimiz boyut değil **gerçek-zamanlı çalışabilirlik**
+   olduğu için XNNPACK ile float32 hız yeterli geldi. Quantization
+   future work başlığında geçiyor.
+
+S: "5 LSTM modeli paralel mi sıralı mı koşuyor?"
+C: 5 ayrı Interpreter instance'ı; pratikte sıralı koşuyor çünkü tek
+   inference 100-150 ms civarı, total ~500-700 ms. Paralel coroutine
+   ile yapsak da telefonda fiziksel core sınırı (4-8) yine darboğaz;
+   üstelik bellek baskısı artardı. Sıralı koşum + StateFlow ile güvenli
+   eşzamanlılık tercih ettik.
+
+S: "Niye MediaPipe Tasks Classifier kullanmadın da kendi LSTM'ini
+    yazdın?"
+C: MediaPipe'ın hazır gesture classifier'ı statik el pozları için
+   (single-frame). Bizim kelime görevimiz 32-frame'lik **temporal**
+   bir sınıflandırma — MediaPipe'ın bu tarafı yok. Bu yüzden landmark
+   çıkarmayı MediaPipe'a, temporal sınıflandırmayı kendi BiLSTM'imize
+   bıraktık. **İş bölümü doğru tarafta**.
+
+S: "Asset memory-map niye?"
+C: .tflite dosyasını ByteArray olarak yüklersek heap'te kopya tutarız —
+   16 MB + 5×5.6 MB = ~44 MB heap. Memory-map ile dosya OS sayfa
+   önbelleğinden okunur, app process'inde kopya yok. Bellek baskısı ↓.
+
+================================================================
+SONRAKİ ADIM
+================================================================
+Bittiyse "anlatım-6 ver" (evaluation: Top-1/5, ensemble, McNemar,
+confusion matrix, person-mixed split, coverage).
+
+Sonra → kod turu + mock jüri Q&A.
+================================================================

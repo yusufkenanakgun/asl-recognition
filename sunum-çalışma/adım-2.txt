@@ -1,0 +1,90 @@
+================================================================
+ADIM 2 — Tensor, Training Loop, Transfer Learning, 128D, ONNX
+================================================================
+
+Notlar:
+- Adım-1'de büyük resmi biliyordun, teknik tanımlar zayıftı.
+- Bu adım hâlâ temel ama feedback'te bıraktığım 5 ipucunun üstüne
+  kuruluyor. Soruları sırayla cevapla, bilmiyorsan "bilmiyorum" yaz.
+- Karışık konular: training tarafı, mimari tarafı, dönüşüm tarafı,
+  veri-feature tarafı.
+
+================================================================
+
+S1: "Tensor" nedir? Bir RGB görüntü (mesela 224×224 piksel bir ASL
+    harfi fotoğrafı) PyTorch'a tensor olarak verildiğinde **şekli
+    (shape)** ne olur? Bir de "batch" kavramı: 32 tane fotoğrafı
+    aynı anda modele verdiğinde shape ne olur?
+
+    İpucu: shape = (..., ..., ..., ...) gibi 3 veya 4 sayı.
+
+C1:
+
+F1:
+
+----------------------------------------------------------------
+
+S2: PyTorch'ta bir modeli eğitirken (training loop) her bir iterasyonda
+    SIRAYLA gerçekleşen 4 ana adım vardır. Bunları sırayla yazabilir
+    misin? (Türkçe veya İngilizce terim kullanabilirsin — örn. "ileri
+    geçiş", "kayıp", "geri yayılım", "optimizer adımı" gibi.)
+
+    İpucu: model(x) ile başlıyor, optimizer.step() ile bitiyor.
+
+C2:
+
+F2:
+
+----------------------------------------------------------------
+
+S3: "Transfer learning" ne demek? EfficientNet-B0'ı biz **sıfırdan mı**
+    eğittik, yoksa zaten birinin eğittiği bir modelin üzerine mi
+    eklediğimiz şeyler oldu? Hangi durumda hangi katmanlar
+    "donduruluyor" (frozen) ve hangileri eğitiliyor?
+
+    İpucu: ImageNet'i hatırla.
+
+C3:
+
+F3:
+
+----------------------------------------------------------------
+
+S4: Faz6_v2 BiLSTM modelinde her bir kare (frame) için modele giren
+    feature vektörünün boyutu **128** sayısıdır. Bu 128 sayısının
+    içinde tam olarak NE var? Yani 128 sayısını bileşenlerine ayırsan,
+    her parça neyi temsil eder?
+
+    İpucu: 2 el var. Her el kaç nokta? Her nokta kaç koordinat?
+    Geriye kalan birkaç sayı için "presence flag" terimini düşün —
+    bu flag ne işe yarıyor, neden var?
+
+C4:
+
+F4:
+
+----------------------------------------------------------------
+
+S5: ONNX nedir, ne işe yarar? PyTorch (.pth) → TFLite (.tflite)
+    dönüşümünü neden DOĞRUDAN yapmadık da araya ONNX (.onnx)
+    soktuk? Yani ONNX'in zincirdeki rolü nedir?
+
+    İpucu: PyTorch ve TFLite, farklı şirketlerin (Meta ve Google)
+    formatları. ONNX nötr bir ara format.
+
+C5:
+
+F5:
+
+================================================================
+Cevapları yazdıktan sonra "adım-2 bitti" de — feedback yazıp
+adım-3.txt'yi seviyene göre hazırlayacağım.
+
+Adım-3'te muhtemel konular (cevaplarına göre değişir):
+  - Loss fonksiyonu (cross-entropy nedir, label smoothing ne yapıyor)
+  - Optimizer (Adam vs AdamW, learning rate, weight decay)
+  - BiLSTM "Bi" neden var, hidden state ne
+  - Mixup augmentation
+  - Ensemble (5-seed) neden 5, voting nasıl
+  - MediaPipe wrist-relative normalization
+================================================================

@@ -1,0 +1,86 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[a4paper,top=1.2cm,bottom=1.2cm,left=1.5cm,right=1.5cm]{geometry}
+\usepackage{newtxtext}
+\usepackage{graphicx}
+\usepackage{array}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+
+\graphicspath{{images/letters/}{images/words/}}
+
+% Letter cell: square image + tiny label
+\newcommand{\letterbox}[2]{%
+  \begin{minipage}[t]{0.22\textwidth}
+    \centering
+    \fbox{\includegraphics[width=4.0cm,height=4.0cm,keepaspectratio]{#1}}\\[3pt]
+    {\large\bfseries #2}
+  \end{minipage}%
+}
+
+% Word row: three frames side-by-side under a single word label
+\newcommand{\wordrow}[2]{%
+  % args: word-stem (e.g. "drink"), display label
+  \begin{minipage}[t]{\textwidth}
+    \centering
+    {\large\bfseries #2}\\[4pt]
+    \includegraphics[width=0.30\textwidth,height=4.8cm,keepaspectratio]{#1_1}\hfill
+    \includegraphics[width=0.30\textwidth,height=4.8cm,keepaspectratio]{#1_2}\hfill
+    \includegraphics[width=0.30\textwidth,height=4.8cm,keepaspectratio]{#1_3}
+  \end{minipage}%
+}
+
+\begin{document}
+
+% =========================================================================
+% Page 1 — Letters A..P  (4 x 4 grid)
+% =========================================================================
+\begin{center}
+\letterbox{A}{A}\hfill\letterbox{B}{B}\hfill\letterbox{C}{C}\hfill\letterbox{D}{D}\\[14pt]
+\letterbox{E}{E}\hfill\letterbox{F}{F}\hfill\letterbox{G}{G}\hfill\letterbox{H}{H}\\[14pt]
+\letterbox{I}{I}\hfill\letterbox{J}{J}\hfill\letterbox{K}{K}\hfill\letterbox{L}{L}\\[14pt]
+\letterbox{M}{M}\hfill\letterbox{N}{N}\hfill\letterbox{O}{O}\hfill\letterbox{P}{P}
+\end{center}
+
+\newpage
+
+% =========================================================================
+% Page 2 — Letters Q..Z + del / nothing / space  (13 items, 4 x 4 grid)
+% =========================================================================
+\begin{center}
+\letterbox{Q}{Q}\hfill\letterbox{R}{R}\hfill\letterbox{S}{S}\hfill\letterbox{T}{T}\\[14pt]
+\letterbox{U}{U}\hfill\letterbox{V}{V}\hfill\letterbox{W}{W}\hfill\letterbox{X}{X}\\[14pt]
+\letterbox{Y}{Y}\hfill\letterbox{Z}{Z}\hfill\letterbox{del}{del}\hfill\letterbox{nothing}{nothing}\\[14pt]
+\letterbox{space}{space}\hfill\mbox{}\hfill\mbox{}\hfill\mbox{}
+\end{center}
+
+\newpage
+
+% =========================================================================
+% Page 3 — Words 1..5  (each row = 3 frames)
+% =========================================================================
+\begin{center}
+\wordrow{want}{want}\\[10pt]
+\wordrow{paint}{paint}\\[10pt]
+\wordrow{bed}{bed}\\[10pt]
+\wordrow{paper}{paper}\\[10pt]
+\wordrow{same}{same}
+\end{center}
+
+\newpage
+
+% =========================================================================
+% Page 4 — Words 6..10
+% =========================================================================
+\begin{center}
+\wordrow{table}{table}\\[10pt]
+\wordrow{dance}{dance}\\[10pt]
+\wordrow{drink}{drink}\\[10pt]
+\wordrow{son}{son}\\[10pt]
+\wordrow{school}{school}
+\end{center}
+
+\end{document}
