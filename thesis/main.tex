@@ -1,61 +1,67 @@
 % =============================================================================
-% AI-Powered Sign Language Recognition System
-% A Comparative Study of Image-Based and Landmark-Based Approaches
+% On-Device American Sign Language Recognition
+% Image- versus Landmark-Based Approaches
 %
-% Author: Yusuf Kenan Akgun (20210702010)
-% Yeditepe University, Department of Computer Engineering
-% CSE492 - Engineering Project, 2026
+% Author: Yusuf Kenan Akgün (20210702010)
+% Yeditepe University, Department of Computer Engineering, CSE492, 2026
 %
-% Compile with:  pdflatex main && biber main && pdflatex main && pdflatex main
-% (or: latexmk -pdf main.tex)
+% Built on the OFFICIAL Yeditepe template (styles/report_format.sty).
+% Compile with XeLaTeX:
+%     xelatex main && biber main && xelatex main && xelatex main
+% (On Overleaf: Menu -> Compiler -> XeLaTeX)
 % =============================================================================
 
-\documentclass[12pt,a4paper,oneside]{report}
+\documentclass[a4paper,12pt]{report}
+\usepackage{styles/report_format}
 
 \input{preamble.tex}
 
-\begin{document}
+% --- Cover page parameters ----------------------------------------------------
+\title{ON-DEVICE AMERICAN SIGN LANGUAGE RECOGNITION: IMAGE- VERSUS LANDMARK-BASED APPROACHES}
+\turkcebaslik{CİHAZ ÜZERİNDE AMERİKAN İŞARET DİLİ TANIMA: GÖRÜNTÜ VE İŞARET NOKTASI TABANLI YAKLAŞIMLARIN KARŞILAŞTIRILMASI}
+\author{Yusuf Kenan Akgün}
+\subyear{2026}
 
-% --- Front matter (Roman page numbers) ------------------------------------
+% --- Approval (signature) page parameters -------------------------------------
+\supervisor{Lecturer Betül Arslan}
+\examineri{Lecturer Gülşah Gökhan Gökçek}
+\examinerii{Asst. Prof. Dr. Gizem Terci}
+\dateofapproval{05/06/2026}
+
+\begin{document}
 \pagenumbering{roman}
 
-\input{titlepage.tex}
-% titlepage ortamı sayacı 1'e resetler; kapağı "i" sayıp boş sayfayı "ii",
-% onay sayfasını "iii" olarak numaralandırmak için sayacı 2'ye alıyoruz.
-\setcounter{page}{2}
+% --- COVER PAGE ---------------------------------------------------------------
+\makecoverpage
 
-% Boş sayfa (kapakla onay sayfası arasında, ciltleme için) — numara gizli
-\thispagestyle{empty}
-\null
+% --- BLANK PAGE (for binding, between cover and approval) ---------------------
+\clearpage\mbox{}
 \clearpage
+\addtocounter{page}{-1}
 
-\input{chapters/00_approval.tex}
+% --- APPROVAL PAGE ------------------------------------------------------------
+\makeapprovalpage
 
+% --- ACKNOWLEDGEMENTS ---------------------------------------------------------
 \input{chapters/00_acknowledgements.tex}
-\clearpage
 
+% --- ABSTRACT -----------------------------------------------------------------
 \input{chapters/00_abstract.tex}
-\clearpage
 
+% --- ÖZET ---------------------------------------------------------------------
 \input{chapters/00_ozet.tex}
-\clearpage
 
-% Front-matter listeleri tek satır aralığıyla bas (LoF 3. sayfaya taşmasın)
-\begin{singlespace}
+% --- TABLE OF CONTENTS / LIST OF FIGURES / LIST OF TABLES ---------------------
 \tableofcontents
-\clearpage
-
 \listoffigures
-\clearpage
-
 \listoftables
+
+% Ship the last front-matter page as roman, then switch to arabic so that
+% Chapter 1 starts on page 1 (mirrors the template's numbering scheme).
 \clearpage
-\end{singlespace}
-
-% --- Main matter (Arabic page numbers) ------------------------------------
 \pagenumbering{arabic}
-\setcounter{page}{1}
 
+% --- MAIN MATTER --------------------------------------------------------------
 \input{chapters/01_introduction.tex}
 \input{chapters/02_related_work.tex}
 \input{chapters/03_analysis_design.tex}
@@ -63,7 +69,7 @@
 \input{chapters/05_test_results.tex}
 \input{chapters/06_conclusion.tex}
 
-% --- Back matter ----------------------------------------------------------
-\printbibliography[heading=bibintoc, title={Bibliography}]
+% --- BIBLIOGRAPHY -------------------------------------------------------------
+\printbibliography
 
 \end{document}

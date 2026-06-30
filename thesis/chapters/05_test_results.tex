@@ -1,8 +1,8 @@
 \chapter{Test and Results}
 \label{ch:test-results}
 
-This chapter reports the empirical evaluation of the four offline
-classifiers introduced in Chapter~\ref{ch:implementation} together
+This section reports the empirical evaluation of the four offline
+classifiers introduced in Section~\ref{ch:implementation} together
 with the on-device behavior of the Android demonstration application.
 The aim is twofold. First, to verify that each model meets the
 quantitative acceptance bars adopted for this thesis: a Top-1
@@ -18,7 +18,7 @@ deployability claim of this thesis quantitative by comparing the four
 classifiers along axes that matter on a phone: accuracy, model size
 and inference latency.
 
-The chapter is organised as two complementary evaluation layers.
+The section is organised as two complementary evaluation layers.
 Sections~\ref{sec:results-letters}--\ref{sec:results-errors} report
 the \emph{offline} evaluation: classifier accuracy and error
 structure on the held-out test partitions, with results positioned
@@ -36,14 +36,21 @@ deployability framing of this thesis benefits from.
 \section{Evaluation Methodology}
 \label{sec:results-methodology}
 
-All offline results in this chapter are computed on the held-out test
+All offline results in this section are computed on the held-out test
 splits described in Section~\ref{sec:impl-data}. The ASL Alphabet
 classifiers are evaluated on the 13\,050-image test partition produced
 by the 70/15/15 stratified split; the word classifiers are evaluated on
 the 201-clip test partition that follows the official WLASL-100 split.
 No checkpoint selection, hyperparameter tuning or threshold calibration
 was performed on the test partition: the test set was held out until
-the validation-best checkpoints had been frozen.
+the validation-best checkpoints had been frozen. In addition to these
+in-distribution partitions, the two letter classifiers are evaluated
+without retraining on an independent external dataset collected by a
+different contributor under different signers, backgrounds and lighting
+(Section~\ref{sec:results-letters-crossdataset}); this cross-dataset
+probe measures the cross-signer generalization that the single-source
+ASL Alphabet split cannot assess and is the quantitative answer to the
+in-distribution caveat stated below.
 
 For each classification task the following metrics are reported.
 \textbf{Top-1 accuracy} is the share of samples whose argmax prediction
@@ -67,7 +74,7 @@ warm-up and a 200-sample timed window. \textbf{Frames per second} is
 the reciprocal of the latency. Two latency budgets are reported per
 model: an offline budget measured on the training GPU, and an
 on-device budget measured on the Android test phone
-(Chapter~\ref{ch:implementation}); the latter is the deployment-relevant
+(Section~\ref{ch:implementation}); the latter is the deployment-relevant
 number.
 
 The word classifier is trained five times with different random seeds,
@@ -78,14 +85,17 @@ seed-to-seed variance does not change the conclusions, and the focus of
 the letter comparison is the architectural trade-off between an image
 network and a landmark network rather than the variance of either one.
 
-Three caveats apply throughout the chapter and are stated here once.
+Three caveats apply throughout the section and are stated here once.
 First, the ASL Alphabet split is random rather than person-disjoint,
 because the public dataset does not expose signer identity. This is a
 known limitation of single-source datasets and means that the
 100\,\% and 99.38\,\% letter accuracies should be interpreted as
-in-distribution upper bounds rather than as predictions of real-world
-generalization. Real-device behavior on previously unseen hands is
-revisited in Section~\ref{sec:results-on-device}. Second, the WLASL-100
+in-distribution upper bounds inflated by capture-domain leakage,
+rather than as predictions of real-world generalization. The cross-dataset evaluation of
+Section~\ref{sec:results-letters-crossdataset} quantifies this gap
+directly on an independent multi-signer set, and real-device behavior
+on previously unseen hands is revisited in
+Section~\ref{sec:results-on-device}. Second, the WLASL-100
 split is person-mixed by design: the same signer can appear in both
 train and test partitions, which inflates the absolute Top-1 number
 relative to a strict signer-disjoint protocol. Third, the word
@@ -97,6 +107,23 @@ F1 averages over 98 effective classes.
 %==============================================================================
 \section{Letter Recognition Results}
 \label{sec:results-letters}
+
+The two letter classifiers are evaluated along three robustness axes,
+each isolated by a different probe, and the distinction between them is
+essential to reading the numbers correctly. The first is
+\emph{in-distribution} accuracy on a random split of the single-source
+ASL Alphabet recording (this section): it is near-ceiling for both
+classifiers, and is shown below to be inflated by capture-domain
+leakage, so it is reported as a diagnostic reference rather than as a
+capability claim. The second is \emph{cross-signer/cross-background}
+generalization on an independent multi-signer dataset
+(Section~\ref{sec:results-letters-crossdataset}): it is the primary
+generalization measure of the letter task. The third is
+\emph{cross-device} sensitivity under a fixed signer on real phone
+hardware (Section~\ref{sec:results-qualitative-letters}): it isolates
+the camera-pipeline robustness of each classifier. The three axes
+answer three different questions and, as the remainder of this section
+shows, rank the two classifiers differently.
 
 Both letter classifiers reach near-ceiling
 accuracy on the ASL Alphabet test partition. EfficientNet-B0 produces
@@ -122,9 +149,9 @@ fair-comparison framing the MLP's effective accuracy is
 the MediaPipe coverage gap when the two classifiers are framed as
 drop-in alternatives rather than as complementary stages.
 
-\begin{table}[h]
+\begin{table}[!ht]
 \centering
-\caption{Test-set accuracy and footprint of the two letter classifiers.}
+\caption{In-distribution test accuracy and footprint of the two letter classifiers.}
 \label{tab:results-letters}
 \begin{tabular}{lcc}
 \toprule
@@ -146,10 +173,20 @@ External dependencies    & None                & MediaPipe Hands \\
 \end{table}
 
 The training trajectories of the two classifiers are shown in
-Figure~\ref{fig:results-lc-cnn} and Figure~\ref{fig:results-lc-mlp};
-both converge rapidly and trigger the early-stopping criterion well
-before the configured epoch budget, with no train--val divergence
-pattern that would suggest overfitting.
+Figure~\ref{fig:results-lc-cnn} and Figure~\ref{fig:results-lc-mlp}.
+The EfficientNet-B0 loss collapses within the first six epochs and its
+validation accuracy saturates at \SI{100}{\percent} from epoch~7
+onward, triggering the early-stopping criterion at epoch~11; the
+landmark MLP crosses \SI{98}{\percent} within the first ten epochs and
+plateaus near \SI{99.3}{\percent} for the remaining \num{90} epochs,
+with its validation curve consistently above the training curve
+because dropout regularisation is active during training but disabled
+at inference. Neither curve shows a train--val divergence pattern that
+would suggest \emph{optimization} overfitting; because train and
+validation are drawn from the same single-contributor distribution,
+however, this narrow gap says nothing about \emph{domain}
+generalization, a caveat quantified in
+Section~\ref{sec:results-letters-crossdataset}.
 
 The confusion matrices of the two letter classifiers are reported
 in Figure~\ref{fig:results-cm-cnn} and
@@ -165,62 +202,43 @@ cell remains below \SI{2}{\percent}, which is consistent with the
 near-ceiling 99.38\,\% Top-1 reported in
 Table~\ref{tab:results-letters}.
 
-\begin{figure}[h]
+\begin{figure}[!ht]
 \centering
 \includegraphics[width=\textwidth]{figures/ch5_lc_cnn.png}
-\caption[Training trajectory of the EfficientNet-B0 letter classifier.]{Training trajectory of the EfficientNet-B0 letter
-classifier. Both train and validation loss collapse within the
-first six epochs and validation accuracy saturates at
-\SI{100}{\percent} from epoch~7 onward, which triggered the
-early-stopping criterion at epoch~11. The narrow train--val gap
-indicates that no overfitting developed despite the large
-\num{60900}-image training partition.}
+\caption{Training trajectory of the EfficientNet-B0 letter classifier.}
 \label{fig:results-lc-cnn}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[!ht]
 \centering
 \includegraphics[width=\textwidth]{figures/ch5_lc_mlp.png}
-\caption[Training trajectory of the landmark MLP letter classifier.]{Training trajectory of the landmark MLP letter
-classifier. Validation accuracy crosses \SI{98}{\percent} within
-the first ten epochs and plateaus near \SI{99.3}{\percent} for the
-remaining \num{90} epochs. The validation curve remains
-consistently above the training curve throughout, which is the
-expected pattern when dropout regularisation is active during
-training but disabled at inference.}
+\caption{Training trajectory of the landmark MLP letter classifier.}
 \label{fig:results-lc-mlp}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[!ht]
 \centering
 \includegraphics[width=0.9\textwidth]{figures/ch5_cm_cnn_letters.png}
-\caption[Row-normalised confusion matrix of the EfficientNet-B0 letter classifier.]{Row-normalised confusion matrix of the EfficientNet-B0
-letter classifier on the 13\,050-image ASL Alphabet test partition.
-Cells report the percentage of true class~$y$ predicted as
-class~$\hat{y}$. The matrix is strictly diagonal: the network
-produces zero off-diagonal predictions across all 29 classes,
-matching the 100\,\% Top-1 accuracy of
-Table~\ref{tab:results-letters}.}
+\caption{Row-normalised confusion matrix of the EfficientNet-B0 letter classifier.}
 \label{fig:results-cm-cnn}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[!ht]
 \centering
 \includegraphics[width=0.9\textwidth]{figures/ch5_cm_mlp_letters.png}
-\caption[Row-normalised confusion matrix of the landmark MLP letter classifier.]{Row-normalised confusion matrix of the landmark MLP letter
-classifier on the detector-recoverable subset of the ASL Alphabet
-test partition (73.09\,\% coverage). The matrix is dominated by the
-diagonal; off-diagonal cells remain below \SI{2}{\percent} and
-concentrate around classes whose handshape MediaPipe captures less
-reliably, in particular the thumb-tucked \textit{M}/\textit{N} pair
-and the closely related \textit{R}/\textit{U}/\textit{V} group.}
+\caption{Row-normalised confusion matrix of the landmark MLP letter classifier.}
 \label{fig:results-cm-mlp}
 \end{figure}
 
-Two observations carry over to Chapter~\ref{ch:conclusion}. The first
-is that on this dataset the image network is the more reliable choice
-because it runs on every input image, whereas the landmark network is
-effectively gated on MediaPipe's detection. The 26.91\,\% of test
+Two observations carry over to Section~\ref{ch:conclusion}. The first
+is that \emph{on this in-distribution split} the image network is the
+more reliable choice because it runs on every input image, whereas the
+landmark network is effectively gated on MediaPipe's detection. This
+ranking is a property of the in-distribution split alone and does not
+survive a change of domain: the cross-dataset evaluation of
+Section~\ref{sec:results-letters-crossdataset} reverses it, with the
+image network collapsing and the landmark network largely holding on an
+independent multi-signer set. The 26.91\,\% of test
 images on which MediaPipe failed include the entire \texttt{nothing}
 class (which contains no hand by construction) and a subset of the
 letters~\textit{M} and~\textit{N}, whose thumb-tucked hand-shape
@@ -244,13 +262,154 @@ A third observation closes the loop on the dataset caveat stated at
 the top of this section: because both classifiers were trained and
 evaluated on a controlled, single-contributor split, neither the
 \SI{100}{\percent} nor the \SI{99.38}{\percent} figure should be
-treated as a prediction of real-world performance. The on-device
-manual evaluation in Section~\ref{sec:results-on-device} reports the
-substantially noisier behavior of both classifiers under the natural
-lighting and background variation of a smartphone camera; the gap
-between the offline test accuracy and the on-device accuracy is the
-appropriate measure of how well each model would generalize in
-production use.
+treated as a prediction of real-world performance. Two complementary
+measurements bound the real generalization of these classifiers. The
+first, reported next in
+Section~\ref{sec:results-letters-crossdataset}, is a cross-dataset
+evaluation on an independent multi-signer set and is the primary
+quantitative generalization measure of the letter task. The second,
+reported in Section~\ref{sec:results-on-device}, is the on-device
+manual evaluation, which reports the noisier behavior of both
+classifiers under the natural lighting and background variation of a
+smartphone camera. Together they show that the gap between the
+offline test accuracy and out-of-distribution accuracy --- not the
+near-ceiling offline number itself --- is the appropriate measure of
+how well each model would generalize in production use.
+
+%------------------------------------------------------------------
+\subsection{Cross-Dataset Generalization}
+\label{sec:results-letters-crossdataset}
+
+The near-ceiling offline accuracies of
+Table~\ref{tab:results-letters} are measured on a held-out partition
+of the \emph{same} single-contributor ASL Alphabet recording, in
+which every class is a burst of near-duplicate frames captured by one
+signer against one background under one lighting condition. A random
+train/test split of such a recording places near-identical frames on
+both sides of the partition, so a classifier can reach
+\SI{100}{\percent} by keying on the capture environment (background
+texture, illumination, the signer's hand) rather than on the
+handshape that defines the letter. To separate genuine handshape
+recognition from this capture-domain memorization, both frozen letter
+classifiers were re-evaluated, \emph{without any retraining}, on an
+independent external set: the \texttt{asl-alphabet-test} corpus of
+Rasband, comprising \num{870} real-world photographs (\num{30} per
+class across all 29 classes) taken by different contributors against
+varied backgrounds and lighting. The two classifiers are evaluated on
+this set exactly as on the in-distribution partition; the result is
+reported in Table~\ref{tab:results-letters-external}.
+
+\begin{table}[!ht]
+\centering
+\caption{Cross-dataset generalization of the two letter classifiers.}
+\label{tab:results-letters-external}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Metric} & \textbf{EfficientNet-B0} & \textbf{Landmark MLP} \\
+\midrule
+Same-domain test Top-1 (reference)              & 100.00\,\% & 99.38\,\% \\
+External test Top-1                             & 59.77\,\%\textsuperscript{a} & 90.72\,\%\textsuperscript{b} \\
+External coverage-adjusted Top-1\textsuperscript{c} & 59.05\,\% & 85.00\,\% \\
+Absolute drop from same-domain (Top-1)         & $-40.23$\,pt & $-8.66$\,pt \\
+External MediaPipe coverage (hand classes)     & n/a         & 93.69\,\% \\
+External \texttt{nothing} handled correctly    & 24/30       & 30/30 \\
+\bottomrule
+\end{tabular}
+\\[0.4em]
+\footnotesize\textsuperscript{a}All \num{870} external images; the image classifier applies no detector gate.
+\textsuperscript{b}Detected-hand subset (787 of the 840 hand-bearing images; the remaining 53 are MediaPipe detection failures).
+\textsuperscript{c}Computed on the 840 hand-bearing images (28 classes $\times$ 30) with MediaPipe failures counted as misclassifications, mirroring the coverage-adjusted column of Table~\ref{tab:results-letters}; for the image classifier this equals its raw accuracy on the same 840-image subset.
+\end{table}
+
+The result is unambiguous. The image network, exactly diagonal and
+\SI{100}{\percent} accurate in distribution, drops to
+\SI{59.77}{\percent} (Wilson \SI{95}{\percent} CI \([56.5, 63.0]\),
+\(n = 870\)) on the external set --- a loss of more than forty
+Top-1 points. The landmark MLP, by contrast, loses only
+\SI{8.66}{percentage point} on the population where it is defined
+(\SI{99.38}{\percent}~$\rightarrow$~\SI{90.72}{\percent}; Wilson
+\SI{95}{\percent} CI \([88.5, 92.6]\), \(n = 787\)) and remains
+the more accurate of the two by a wide margin once the domain changes.
+The two confidence intervals are disjoint by roughly twenty-five
+points, so the ranking reversal between the in-distribution and
+cross-dataset evaluations is not attributable to the finite size of
+the external set.
+The cross-dataset confusion matrices are shown in
+Figure~\ref{fig:results-cm-cnn-external} and
+Figure~\ref{fig:results-cm-mlp-external}: the image network's matrix,
+diagonal in distribution (Figure~\ref{fig:results-cm-cnn}), develops
+dense off-diagonal mass on the external set, whereas the landmark
+network's matrix stays predominantly diagonal. This is the single most direct piece of
+evidence in the thesis for the claim that the landmark abstraction,
+which discards background and illumination and retains only hand
+geometry, is what actually generalizes; the image network's
+in-distribution perfection is in large part capture-domain
+memorization, exactly the overfitting that the same-domain train/val
+curve of Figure~\ref{fig:results-lc-cnn} cannot detect.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/ch5_cm_cnn_external.png}
+\caption{Cross-dataset confusion matrix of the EfficientNet-B0 letter classifier.}
+\label{fig:results-cm-cnn-external}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/ch5_cm_mlp_external.png}
+\caption{Cross-dataset confusion matrix of the landmark MLP letter classifier.}
+\label{fig:results-cm-mlp-external}
+\end{figure}
+
+The per-class breakdown sharpens the contrast. The image network's
+failures are concentrated on letters whose external rendering differs
+most from the training capture --- \textit{S} (\SI{0}{\percent}),
+\textit{T} (\SI{6.7}{\percent}), \textit{Z} (\SI{13.3}{\percent}),
+\textit{F} (\SI{16.7}{\percent}) and \textit{V} (\SI{20}{\percent})
+--- a set with no shared handshape structure, consistent with a
+domain-shift rather than an ambiguity failure; on the external
+confusion matrix (Figure~\ref{fig:results-cm-cnn-external}) the
+letters \textit{R} and \textit{W} act as attractor classes that
+absorb much of this misdirected mass. The landmark network's
+two weakest classes are instead \textit{N} and \textit{V}
+(both \SI{44.8}{\percent} on detected hands), a pair that is
+genuinely close in hand-landmark space and that already appeared as
+the principal in-distribution confusion of
+Figure~\ref{fig:results-cm-mlp}. The two classifiers therefore fail on
+\emph{different} letters and for different reasons: the image network
+on a domain-driven set with no geometric commonality, the landmark
+network on a small set of geometrically ambiguous handshapes that
+persists across domains.
+
+A secondary observation concerns MediaPipe coverage. On the external
+set the detector recovered a hand on \SI{93.69}{\percent} of the
+hand-bearing images, well above the \SI{73.09}{\percent} recovery rate
+on the in-distribution test partition
+(Section~\ref{sec:impl-mlp}). The external photographs are higher in
+resolution and better framed than the \(200\times200\) crops of the
+ASL Alphabet dataset, so the detector floor that bounds the landmark
+pipeline in distribution is \emph{not} the binding constraint on the
+external set; this is why the landmark MLP's coverage-adjusted Top-1
+is in fact higher on the external set
+(\SI{85.00}{\percent}) than on the in-distribution partition
+(\SI{75.23}{\percent}, Table~\ref{tab:results-letters}). The
+\texttt{nothing} class, which has no hand by construction, is handled
+correctly on all \num{30} external images by the deployed
+no-hand path.
+
+Two qualifications keep this result honest. First, the landmark MLP is
+not itself immune to the domain shift: it loses \SI{8.66}{} points on
+its detected population and is gated on a detector that, although it
+performs better here, can still fail under adverse capture conditions.
+The cross-dataset evidence supports the landmark variant as the more
+\emph{robust} of the two, not as a domain-invariant classifier.
+Second, an external dataset from a different contributor is a proxy
+for, not a substitute for, a within-dataset signer-disjoint split:
+it varies signer, background and camera jointly rather than isolating
+signer identity. A strict signer-disjoint evaluation remains
+impossible on the ASL Alphabet dataset, which does not publish signer
+labels, and is noted as a residual limitation in
+Section~\ref{sec:conclusion-limitations}.
 
 %==============================================================================
 \section{Word Recognition Results}
@@ -271,13 +430,9 @@ reported on that protocol and the unmeasured signer-independent
 generalization band is revisited in
 Section~\ref{sec:conclusion-limitations}.
 
-\begin{table}[h]
+\begin{table}[!ht]
 \centering
-\caption[Per-seed and ensemble accuracy on the WLASL-100 test set.]{Per-seed and ensemble accuracy on the WLASL-100 test set.
-Top-1 cells include the 95\,\% Wilson binomial confidence interval
-computed on the 201-clip test partition; at this sample size a single
-misclassification moves Top-1 by \SI{0.50}{percentage point} and the
-CI spans roughly \(\pm 7\) points around each estimate.}
+\caption{Per-seed and ensemble accuracy on the WLASL-100 test set.}
 \label{tab:results-words-seeds}
 \begin{tabular}{lccc}
 \toprule
@@ -311,13 +466,10 @@ range and corresponds to the average single-seed trajectory whose
 endpoint matches the per-seed mean of
 Table~\ref{tab:results-words-seeds}.
 
-\begin{figure}[h]
+\begin{figure}[!ht]
 \centering
 \includegraphics[width=\textwidth]{figures/ch5_lc_lstm.png}
-\caption[Training trajectories of the five BiLSTM seeds.]{Training trajectories of the five BiLSTM seeds trained
-under the final configuration. Thin grey lines are individual seeds,
-the bold black lines are the per-epoch mean across seeds (averaged
-over the epoch range on which all seeds were still active).}
+\caption{Training trajectories of the five BiLSTM seeds.}
 \label{fig:results-lc-lstm}
 \end{figure}
 
@@ -345,7 +497,7 @@ the implementation is documented in
 \texttt{src/faz6/stat\_analysis.py} and its output in
 \texttt{models/faz6\_v2/stat\_analysis.json}. Against the per-clip
 empirical seed mean the ensemble's Top-1 lift is
-\(+4.09\) points with a 95\,\% bootstrap CI of \([+0.80, +7.46]\)
+\(+4.08\) points with a 95\,\% bootstrap CI of \([+0.80, +7.46]\)
 (\(p = 0.015\)), so the gain over the mean of an unselected seed is
 statistically distinguishable from zero on this test set. Against the
 best single seed (seed 2), however, the same procedure returns no
@@ -362,8 +514,10 @@ result at 56.22\,\% --- rather than to exceed what a validation-best
 single seed could have delivered. The case for the ensemble at
 deployment time rests on this variance reduction and on the on-device
 manual test of Section~\ref{sec:results-qualitative-words}, where the
-\(+11\)-point gap between single and ensemble on 100 trials carries
-its own statistical reading.
+\(+11\)-point gap between single and ensemble on 100 trials is
+significant under McNemar's paired exact test (\(p = 0.035\)) ---
+the deployment-relevant comparison being ensemble versus a single
+unselected model, not versus the post-hoc best-of-five seed.
 
 \subsection{Comparison with the Adopted Acceptance Bars}
 \label{sec:results-words-acceptance}
@@ -390,7 +544,7 @@ four points on the smaller and more variable test set, which is the
 common pattern observed across deep-learning evaluations on
 limited-size data.
 
-\subsection{Position in the WLASL-100 Literature}
+\subsection{Comparison with Published WLASL-100 Results}
 \label{sec:results-words-literature}
 
 Table~\ref{tab:results-wlasl-lit} places the ensemble's 56.22\,\% Top-1
@@ -406,12 +560,9 @@ differ in input modality, preprocessing pipeline and hardware budget;
 nevertheless, the table communicates the relative position of a
 hands-only landmark model among the available approaches.
 
-\begin{table}[h]
+\begin{table}[!ht]
 \centering
-\caption[Reported Top-1 accuracy on the WLASL-100 test split (literature comparison).]{Reported Top-1 accuracy on the WLASL-100 test split, under
-the canonical person-mixed protocol shared by all entries.
-Numbers are quoted from each publication; the modality column
-distinguishes RGB, body pose, body+hand pose and hand-only inputs.}
+\caption{Reported Top-1 accuracy on the WLASL-100 test split (literature comparison).}
 \label{tab:results-wlasl-lit}
 \begin{tabular}{llll}
 \toprule
@@ -462,10 +613,10 @@ paper reports a model-size figure in megabytes against its
 Top-1 entry, neither paper reports an on-device end-to-end
 latency on a smartphone, and neither paper reports an
 offline-to-on-device accuracy gap on a known-sign single-user
-probe. The present chapter reports all three
+probe. The present section reports all three
 (Sections~\ref{sec:results-on-device} and
 \ref{sec:results-qualitative}) on two distinct Android devices.
-The trade-off characterized in Chapter~\ref{ch:implementation}
+The trade-off characterized in Section~\ref{ch:implementation}
 therefore plays out as expected on the offline benchmark:
 heavier RGB or multi-stream pipelines win on accuracy, lighter
 landmark pipelines win on deployability. The present work is the
@@ -489,7 +640,7 @@ phone, are reported in Section~\ref{sec:results-on-device}; they are
 the deployment-relevant numbers.
 
 %==============================================================================
-\section{Ablation Study}
+\section{Forward-Additive Ablation Analysis}
 \label{sec:results-ablation}
 
 The word classifier reported in Section~\ref{sec:results-words} did not
@@ -512,17 +663,16 @@ WLASL-100 split as the final configuration, and the resulting mean
 validation accuracies are reported in
 Table~\ref{tab:results-ablation}. This table is the single most
 useful artefact for understanding which design choices carried the
-most weight on this dataset.
+most weight on this dataset. All accuracies in this section are
+validation Top-1, the quantity on which the ablation was run; the
+corresponding held-out test accuracy of the final ensemble is
+\SI{56.22}{\percent} (Section~\ref{sec:results-words}), roughly four
+points below its \SI{60.08}{\percent} validation endpoint --- the
+small generalization gap expected on a 201-clip test partition.
 
-\begin{table}[h]
+\begin{table}[!ht]
 \centering
-\caption[Forward-additive ablation from the 20.00\,\% baseline to the 60.08\,\% ensemble.]{Forward-additive ablation from the initial 20.00\,\% baseline to
-the final 60.08\,\% ensemble. Each row introduces a single new
-component on top of the previous row and reports the mean validation
-Top-1 over three independently seeded training runs (mean~$\pm$~half-range);
-the final ensemble row is the published five-seed logit-averaging model.
-The three component groups (data, extraction, training) are demarcated
-horizontally.}
+\caption{Forward-additive ablation from the 20.00\,\% baseline to the 60.08\,\% ensemble.}
 \label{tab:results-ablation}
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{clcc}
@@ -555,7 +705,7 @@ horizontally.}
 
 Three observations stand out. First, the largest single contribution to the
 40-point trajectory is the data engineering step. The yt-dlp recovery of
-448 link-rotted videos (Section~\ref{sec:impl-data}), holding every other
+452 link-rotted videos (Section~\ref{sec:impl-data}), holding every other
 hyperparameter and the feature representation fixed at their V1 values,
 adds 16.08 validation points on its own. This is more than every
 training-side change combined and underlines the dataset-size sensitivity
@@ -649,10 +799,16 @@ location on the body or a movement trajectory, and the model's mistakes
 therefore look like the mistakes a beginning ASL student would make
 rather than like the noise of an under-trained network.
 
-\begin{table}[h]
+\begin{figure}[!ht]
 \centering
-\caption{Five most frequent confusion pairs in the ensemble predictions,
-with the linguistic reason for the visual ambiguity.}
+\includegraphics[width=\textwidth]{figures/ch5_cm_lstm_words.png}
+\caption{Row-normalised confusion matrix of the five-seed BiLSTM ensemble.}
+\label{fig:results-cm-words}
+\end{figure}
+
+\begin{table}[!ht]
+\centering
+\caption{Five most frequent confusion pairs in the ensemble predictions.}
 \label{tab:results-confusions}
 \begin{tabular}{llp{7.4cm}}
 \toprule
@@ -667,18 +823,6 @@ with the linguistic reason for the visual ambiguity.}
 \end{tabular}
 \end{table}
 
-\begin{figure}[h]
-\centering
-\includegraphics[width=\textwidth]{figures/ch5_cm_lstm_words.png}
-\caption[Row-normalised confusion matrix of the five-seed BiLSTM ensemble.]{Row-normalised confusion matrix of the five-seed BiLSTM
-ensemble on the 25 most populous classes of the WLASL-100 test
-partition. The full 100-class matrix is dominated by single-clip
-rows that are not visually informative; the truncation to the top
-25 classes by test support preserves the diagonal-with-isolated-confusions
-structure of the prediction error.}
-\label{fig:results-cm-words}
-\end{figure}
-
 The implication of the table is that the model has internalized the
 high-level structure of an ASL sign (handedness, location and the
 class of movement) and fails on the fine-grained handshape or
@@ -689,7 +833,7 @@ would resolve several of these confusions, and facial markers would
 resolve others (the distinction between \texttt{mother} and
 \texttt{fine}, in particular, is partly tied to a facial component
 that hand landmarks cannot capture). The Limitations subsection of
-Chapter~\ref{ch:conclusion} returns to this point in the context of
+Section~\ref{ch:conclusion} returns to this point in the context of
 multi-stream models that combine hand, body and facial input.
 
 Two structural caveats round out the error picture. First, two of the
@@ -720,7 +864,7 @@ label is among the top five predictions in roughly 25 percentage
 points of clips that the Top-1 metric counts as failures. In a
 real-world interactive application this gap is recoverable through a
 ``did you mean'' interaction surface (a confidence-ranked shortlist of
-candidate signs); the Android demo of Chapter~\ref{ch:implementation}
+candidate signs); the Android demo of Section~\ref{ch:implementation}
 does not implement such a surface but the option is preserved for
 future work.
 
@@ -791,11 +935,9 @@ average, but the end-to-end latency rises to \SI{203}{ms} mean and
 peaks at \SI{220}{ms}, an order of magnitude higher than its Xiaomi
 counterpart.
 
-\begin{table}[h]
+\begin{table}[!ht]
 \centering
-\caption{On-device throughput and latency of the two letter
-classifiers, measured from the in-app FPS/latency badge over a
-60-second window (six samples per cell).}
+\caption{On-device throughput and latency of the two letter classifiers.}
 \label{tab:on-device-letters}
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{llccccc}
@@ -837,13 +979,9 @@ expected factor of approximately five, raising mean latency to
 configurations are comfortably within an interactive budget on the
 flagship hardware.
 
-\begin{table}[h]
+\begin{table}[!ht]
 \centering
-\caption[On-device throughput and latency of the two word classifiers.]{On-device throughput and latency of the two word
-classifiers (six samples per cell). The TECNO entry for the ensemble
-is the headline result of this section: a five-fold latency
-inflation that is invisible on flagship hardware becomes
-interaction-breaking on the entry-level SoC.}
+\caption{On-device throughput and latency of the two word classifiers.}
 \label{tab:on-device-words}
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{llccccc}
@@ -1002,12 +1140,9 @@ Table~\ref{tab:qual-letters} reports the manual-test accuracy of the
 two letter classifiers on both phones over their 28 measurable
 classes. Three observations frame the result.
 
-\begin{table}[h]
+\begin{table}[!ht]
 \centering
-\caption{Manual-test accuracy of the two letter classifiers across
-both devices. The 28 measurable classes exclude the
-\texttt{nothing} class, which the deployed pipeline does not
-classify by design.}
+\caption{Manual-test accuracy of the two letter classifiers across both devices.}
 \label{tab:qual-letters}
 \begin{tabular}{llccc}
 \toprule
@@ -1030,7 +1165,7 @@ landmark MLP drops from \SI{99.38}{\percent} offline to a uniform
 Section~\ref{sec:results-letters} flagged as the appropriate yardstick
 for production readiness is therefore at most seven percentage points
 on the worst-case (device, model) cell and zero on three of the four
-cells. This is consistent with the chapter's claim that
+cells. This is consistent with the section's claim that
 the letter classifiers are deployment-ready, under the single-user
 known-sign conditions of the manual test.
 
@@ -1062,6 +1197,29 @@ on-device evaluation cannot report a number for that class and the
 offline test partition remains the appropriate ground truth for the
 ``no hand'' negative.
 
+Fourth, the manual-test numbers must be reconciled with the
+cross-dataset evaluation of
+Section~\ref{sec:results-letters-crossdataset}, which at first sight
+appear to conflict: EfficientNet reaches \SIrange{92.9}{100}{\percent}
+here but only \SI{59.77}{\percent} on the external set. The two tests
+vary \emph{different} factors and therefore measure different
+robustness axes. The manual test holds the signer fixed (a single
+user, the author) and varies the device, so it isolates
+camera-pipeline sensitivity under one known hand morphology in
+controlled lighting; the external test holds the capture style
+roughly fixed and varies signer and background across many
+contributors, so it isolates cross-signer generalization. The two
+numbers are therefore consistent rather than contradictory:
+EfficientNet handles one known signer across devices well but
+collapses when the signer and background change, and a single-user
+manual test cannot, by construction, expose that collapse. This is
+precisely why the multi-signer external set was introduced and why
+it, not the single-user manual test, is the authoritative
+out-of-distribution measure for the letter task. The landmark MLP,
+by contrast, reaches \SI{100}{\percent} on both device conditions of
+the manual test and retains \SI{90.72}{\percent} on the cross-signer
+external set, so its robustness verdict is the same under both probes.
+
 \subsection{Word Models on the Xiaomi}
 \label{sec:results-qualitative-words}
 
@@ -1071,12 +1229,9 @@ Xiaomi. Because the TECNO ensemble latency made trials unproductive
 (Section~\ref{sec:results-on-device-words}), Words trials on the
 TECNO are not reported.
 
-\begin{table}[h]
+\begin{table}[!ht]
 \centering
-\caption{Manual-test accuracy of the two word classifiers on the
-WLASL-100 vocabulary (100 trials per model, one trial per class)
-on the Xiaomi 15T Pro. Mean Top-1 confidence is computed over the
-correctly classified subset.}
+\caption{Manual-test accuracy of the two word classifiers on the Xiaomi 15T Pro.}
 \label{tab:qual-words}
 \begin{tabular}{lccc}
 \toprule
@@ -1115,7 +1270,32 @@ bar is within sampling noise on the 100-trial sample. Both numbers
 should be read as bounded by this sample size rather than as
 distribution-level capability claims; a larger and multi-signer
 manual evaluation is listed as future work in
-Chapter~\ref{ch:conclusion}.
+Section~\ref{ch:conclusion}.
+
+The ensemble's \SI{11}{percentage point} lead over the single model on
+this sample must be reconciled with the offline finding of
+Section~\ref{sec:results-words}, where the ensemble was statistically
+indistinguishable from the best single seed (McNemar
+\(p = 1.000\)). The two results are not in tension, for two reasons.
+First, they compare different baselines: the offline null is ensemble
+\emph{versus the post-hoc best-of-five seed}, a choice not available
+at deployment time, whereas both the on-device comparison and the
+significant offline lift over the per-seed mean (\(+4.08\),
+\(p = 0.015\)) pit the ensemble against a \emph{single unselected}
+model, which is the deployment-relevant baseline. Second, the
+marginal Wilson intervals quoted above overlap, but the on-device
+single and ensemble runs are \emph{paired} (the same 100 glosses, the
+same user), so the appropriate test is McNemar's on the discordant
+pairs rather than a comparison of independent intervals. On the
+paired on-device trials the ensemble corrects 17 single-model errors
+while introducing 6 of its own (\(b = 17\), \(c = 6\)), and
+McNemar's exact test returns \(p = 0.035\): the on-device gain is
+statistically distinguishable from zero on this sample. The reading
+that survives both evaluations is therefore consistent --- the
+ensemble reliably beats an unselected single model and removes the
+seed-selection gamble --- with the single caveat that this on-device
+significance is established on one signer and does not by itself
+establish a population-level effect.
 
 Two structural observations are worth recording. The first is the
 shape of the ensemble improvement: it adds eleven Top-1 points
@@ -1178,7 +1358,7 @@ Section~\ref{sec:results-errors}: the model has internalised the
 gross morphology of an ASL sign and fails on the fine-grained
 context that the proposal-stage decision to restrict the input to
 hand landmarks deliberately excluded. The Limitations section of
-Chapter~\ref{ch:conclusion} returns to this point alongside the
+Section~\ref{ch:conclusion} returns to this point alongside the
 \emph{hands-only landmark stream} bullet.
 
 \subsection{Summary}
@@ -1188,11 +1368,79 @@ Across all four (model, device) configurations the qualitative test
 delivers the deployment-level outcome called for by the proposal:
 the recognised letter or word appears on screen, the application
 reports its own FPS and latency, and the gap between offline and
-on-device accuracy is bounded and explainable. Read jointly with the
-offline evaluation of Sections~\ref{sec:results-letters}--\ref{sec:results-errors},
-the two layers converge on a consistent picture: the four
-classifiers meet the adopted offline acceptance bars on the
-held-out test partitions
+on-device accuracy is bounded and explainable. Stepping back from
+the manual test to the chapter as a whole, the evaluation set out to
+answer two questions --- whether each classifier meets the acceptance
+bars adopted for this thesis, and how the four models compare along
+the axes that matter on a phone (accuracy, size and latency) --- and
+both are now answered across an offline layer
+(Sections~\ref{sec:results-letters}--\ref{sec:results-errors}) and a
+deployment layer (Sections~\ref{sec:results-on-device}
+and~\ref{sec:results-qualitative}).
+
+On the letter task both classifiers are near-ceiling in distribution
+--- EfficientNet-B0 at \SI{100}{\percent} and the landmark MLP at
+\SI{99.38}{\percent} on detected hands --- but that in-distribution
+number proved the least informative of the three robustness probes.
+The cross-dataset evaluation on Rasband's independent multi-signer
+set (Section~\ref{sec:results-letters-crossdataset}) is the decisive
+result: EfficientNet collapses to \SI{59.77}{\percent}
+($-40.23$~points) while the landmark MLP retains \SI{90.72}{\percent}
+($-8.66$~points), reversing the in-distribution ranking and
+providing the thesis's most direct evidence that the landmark
+abstraction --- which discards background and illumination and keeps
+only hand geometry --- is what actually generalises, whereas the
+image network's in-distribution perfection is in large part
+capture-domain memorisation. The cost the landmark route carries is
+coverage: MediaPipe recovers a hand on only \SI{73.09}{\percent} of
+the in-distribution crops, which is why its coverage-adjusted Top-1
+(\SI{75.23}{\percent}) trails EfficientNet when the two are framed as
+drop-in alternatives rather than as complementary stages.
+
+On the word task the five-seed BiLSTM ensemble reaches
+\SI{56.22}{\percent} Top-1 and \SI{81.09}{\percent} Top-5 on the
+canonical person-mixed WLASL-100 split, clearing the adopted
+\SI{40}{\percent} hard bar by 16.22~points and falling 3.78~points
+short of the \SI{60}{\percent} stretch target it does cross on
+validation (\SI{60.08}{\percent}). The forward-additive ablation of
+Section~\ref{sec:results-ablation} decomposes that 40-point climb
+from the \SI{20.00}{\percent} baseline and attributes the largest
+single gain to data engineering --- the yt-dlp recovery of 452
+link-rotted clips, $+16.08$~points on its own --- rather than to any
+training-recipe change, with the extraction-pipeline upgrade adding a
+further $10.29$~points; the two non-training pillars together account
+for 26.4 of the 40 points. The ensemble's offline contribution is
+variance reduction rather than a new accuracy ceiling: it removes the
+seed-selection gamble (statistically indistinguishable from the
+post-hoc best seed at McNemar $p = 1.000$, but $+4.08$~points at
+$p = 0.015$ over the unselected per-seed mean), and the error
+analysis of Section~\ref{sec:results-errors} shows the residual
+mistakes are sign-linguistically structured confusions that a
+hands-only stream is not equipped to resolve.
+
+On the deployment axis the headline operational outcome is a
+device-conditional model-selection rule. On an entry-level SoC
+(Helio~G36) only the landmark MLP sustains an interactive experience:
+EfficientNet-B0 stays correct but its end-to-end latency rises to
+roughly \SI{200}{ms}, the single BiLSTM is borderline, and the
+five-seed ensemble (mean \SI{665}{ms}) is unusable. On a flagship SoC
+(Dimensity~9400+) all four classifiers meet their budgets and the
+choice collapses back to the accuracy/size trade-off of
+Tables~\ref{tab:results-letters} and~\ref{tab:results-words-seeds}.
+The decision to run all four models on the CPU through XNNPACK ---
+taken to eliminate a GPU-delegate cold-start crash
+(Section~\ref{sec:results-on-device-cpu}) --- buys a crash-free build
+at an asymmetric latency cost that the flagship absorbs invisibly and
+the budget phone does not. The manual test confirms both readings:
+on the budget phone the landmark MLP matches or beats EfficientNet
+(\SI{100}{\percent} versus \SI{92.9}{\percent}, a clean inversion of
+the offline ranking), and the ensemble's $+11$-point on-device lead
+over the single model on the Xiaomi is significant under McNemar's
+paired exact test ($p = 0.035$).
+
+Read jointly, the offline and deployment layers converge on a
+consistent picture: the four classifiers meet the adopted offline
+acceptance bars on the held-out test partitions
 (Section~\ref{sec:results-words-acceptance}), and the deployed system
 preserves that behaviour under realistic camera and on-device
 inference conditions to the extent that hardware capacity permits.
@@ -1205,4 +1453,4 @@ Section~\ref{sec:results-on-device-words}. These measurements expose
 two limitations of the delivered system --- the asymmetric latency
 cost of CPU-only execution on entry-level hardware and the
 single-user OOD penalty observed on EfficientNet under the TECNO's
-camera pipeline --- both taken up in Chapter~\ref{ch:conclusion}.
+camera pipeline --- both taken up in Section~\ref{ch:conclusion}.

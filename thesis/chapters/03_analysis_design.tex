@@ -1,13 +1,13 @@
 \chapter{Analysis and Design}
 \label{ch:analysis-design}
 
-This chapter formalises the recognition problem introduced in
-Chapter~\ref{ch:introduction} and sets out the design that
-Chapter~\ref{ch:implementation} subsequently realises. It is
+This section formalises the recognition problem introduced in
+Section~\ref{ch:introduction} and sets out the design that
+Section~\ref{ch:implementation} subsequently realises. It is
 deliberately platform- and language-agnostic: it describes what the
 system must do and how its components are organised, without
 committing to the specific libraries, model versions or training
-recipes that the next chapter unpacks. Section~\ref{sec:design-fr}
+recipes that the next section unpacks. Section~\ref{sec:design-fr}
 specifies the functional requirements derived from the project
 proposal; Section~\ref{sec:design-nfr} translates the proposal's
 evaluation criteria into measurable non-functional requirements;
@@ -30,7 +30,7 @@ delivered as a real-time mobile demo. From this scope statement six
 functional requirements are derived. Each one is phrased as an
 observable behaviour rather than as an implementation choice; the
 mapping from requirement to component is the subject of
-Chapter~\ref{ch:implementation}.
+Section~\ref{ch:implementation}.
 
 \begin{description}
   \item[FR-01: Image-based letter recognition.] The system shall
@@ -79,10 +79,10 @@ Chapter~\ref{ch:implementation}.
 
 Table~\ref{tab:design-fr} consolidates the six requirements together
 with the principal input and output of each, and points to the
-section of Chapter~\ref{ch:implementation} that documents the
+part of Section~\ref{ch:implementation} that documents the
 corresponding implementation.
 
-\begin{table}[h]
+\begin{table}[!ht]
 \centering
 \caption{Functional requirements summary.}
 \label{tab:design-fr}
@@ -95,7 +95,7 @@ FR-01 & Single RGB image (one hand)        & 29-way class + confidence  & \S\ref
 FR-02 & 21-keypoint landmark vector        & 29-way class + confidence  & \S\ref{sec:impl-mlp} \\
 FR-03 & Fixed-length landmark sequence     & 100-way class + confidence & \S\ref{sec:impl-lstm} \\
 FR-04 & Live camera frames                 & On-screen Top-3 prediction & \S\ref{sec:impl-android} \\
-FR-05 & Trained model checkpoints          & Tables and plots           & Ch.~\ref{ch:test-results} \\
+FR-05 & Trained model checkpoints          & Tables and plots           & Sec.~\ref{ch:test-results} \\
 FR-06 & Public datasets on disk            & Cached features and splits & \S\ref{sec:impl-data} \\
 \bottomrule
 \end{tabular}
@@ -103,11 +103,11 @@ FR-06 & Public datasets on disk            & Cached features and splits & \S\ref
 
 A small number of capabilities are explicitly out of scope and are
 listed once here so that they are not re-derived as requirements in
-later chapters. The system does not handle continuous sign language
+later sections. The system does not handle continuous sign language
 translation, does not target sign languages other than American Sign
 Language, does not perform server-side inference, and does not build
 a class-diagram-driven object-oriented model of the data flow;
-Section~\ref{sec:intro-scope} of Chapter~\ref{ch:introduction}
+Section~\ref{sec:intro-scope} in Section~\ref{ch:introduction}
 states the full scope boundary.
 
 %==============================================================================
@@ -121,7 +121,7 @@ deployment platform. The following non-functional requirements are
 the engineering elaboration of those commitments. They are stated as
 acceptance properties of the finished system rather than as
 optimisation targets, and they are revisited quantitatively in
-Chapter~\ref{ch:test-results}.
+Section~\ref{ch:test-results}.
 
 \begin{description}
   \item[NFR-01: Real-time on-device inference.] The end-to-end
@@ -170,9 +170,9 @@ Chapter~\ref{ch:test-results}.
 
 Table~\ref{tab:design-nfr} maps each non-functional requirement to
 the measurement instrument that will be used to verify it in
-Chapter~\ref{ch:test-results}.
+Section~\ref{ch:test-results}.
 
-\begin{table}[h]
+\begin{table}[!ht]
 \centering
 \caption{Non-functional requirements and their verification.}
 \label{tab:design-nfr}
@@ -195,13 +195,13 @@ NFR-07 & Documented dependencies           & \texttt{requirements.txt}, Table~\r
 Two non-functional axes that are sometimes treated as requirements
 in the broader sign-recognition literature are deliberately omitted
 here. The first is a numeric accuracy threshold per task: the
-proposal does not pin one, and Chapter~\ref{ch:test-results} reports
+proposal does not pin one, and Section~\ref{ch:test-results} reports
 the achieved accuracy against published baselines on the same data
 rather than against a self-imposed pass/fail bar. The second is a
 universal model-size cap: a single cap would penalise the image
 network unfairly relative to the landmark network even though both
 are useful at different points of the accuracy/footprint curve, and
-the comparative framing of the thesis (Chapter~\ref{ch:introduction})
+the comparative framing of the thesis (Section~\ref{ch:introduction})
 is the more informative axis to report on.
 
 %==============================================================================
@@ -231,16 +231,10 @@ no-hand exception path, which extends the three recognition cases
 only when MediaPipe Hands fails to detect a hand in the current
 frame.
 
-\begin{figure}[h]
+\begin{figure}[!ht]
 \centering
 \includegraphics[width=\textwidth]{figures/ch3_use_case.pdf}
-\caption[Use case diagram of the mobile recognition system.]{Use case diagram of the mobile recognition system. A
-single \emph{Signer} actor initiates one of three recognition use
-cases (UC-1 image-based letter, UC-2 landmark-based letter, UC-3
-word) or switches the active recognition mode (UC-4). All three
-recognition use cases are optionally extended by the no-hand
-fallback (UC-5) whenever MediaPipe Hands fails to detect a hand
-in the current frame.}
+\caption{Use case diagram of the mobile recognition system.}
 \label{fig:design-usecase}
 \end{figure}
 
@@ -272,13 +266,10 @@ same checkpoints, converted to a mobile inference format.
 Figure~\ref{fig:design-architecture} renders the two stacks as a
 single block diagram with the checkpoint hand-off marked explicitly.
 
-\begin{figure}[h]
+\begin{figure}[!ht]
 \centering
 \includegraphics[width=\textwidth]{figures/ch3_architecture.pdf}
-\caption[End-to-end system architecture.]{End-to-end system architecture. The offline training stack
-on a workstation produces TFLite checkpoints; the on-device
-inference stack consumes the same checkpoints inside the Android
-application.}
+\caption{End-to-end system architecture.}
 \label{fig:design-architecture}
 \end{figure}
 
@@ -336,7 +327,7 @@ is intentionally thin so that swapping any one of the four for a
 future replacement (a different camera library, a different
 landmark extractor, a different inference runtime or a different
 UI framework) does not perturb the other three.
-Chapter~\ref{ch:implementation} documents the concrete classes
+Section~\ref{ch:implementation} documents the concrete classes
 that implement these boundaries.
 
 %==============================================================================
@@ -363,15 +354,12 @@ messages exchanged between the participants (\textsf{Signer},
 camera library, \textsf{FrameAnalyzer}, MediaPipe landmark engine,
 \textsf{InferenceManager} and the UI) for a single frame.
 
-\begin{sidewaysfigure}
+\begin{figure}[p]
 \centering
-\includegraphics[width=\textwidth]{figures/ch3_sequence_letter.pdf}
-\caption[Sequence diagram of the letter recognition flow.]{Sequence diagram of the letter recognition flow for a
-single preview frame. The \texttt{alt} fragment distinguishes the
-two letter classifiers; the \texttt{opt} fragment captures the
-no-hand fallback path.}
+\rotatebox{90}{\includegraphics[width=0.95\textheight]{figures/ch3_sequence_letter.pdf}}
+\caption{Sequence diagram of the letter recognition flow.}
 \label{fig:design-sequence-letter}
-\end{sidewaysfigure}
+\end{figure}
 
 Three message-passing properties shape the rest of the design.
 First, the landmark engine's asynchronous detection call returns
@@ -400,19 +388,12 @@ which differs from the letter flow in two places: a sliding buffer
 is maintained inside the analyzer, and the classifier call is
 gated on the buffer being full.
 
-\begin{sidewaysfigure}
+\begin{figure}[p]
 \centering
-\includegraphics[width=\textwidth]{figures/ch3_sequence_word.pdf}
-\caption[Sequence diagram of the word recognition flow.]{Sequence diagram of the word recognition flow. The
-sliding \texttt{SequenceBuffer} accumulates per-frame features
-until the window of 32 frames is full; the ensemble fragment
-expands the classifier call into the seeded loop of
-Section~\ref{sec:design-algorithm-ensemble}. The post-fill
-single-shot lock is described in the prose of
-Section~\ref{sec:design-sequence-word} and is omitted from the
-diagram to keep the main flow legible.}
+\rotatebox{90}{\includegraphics[width=0.95\textheight]{figures/ch3_sequence_word.pdf}}
+\caption{Sequence diagram of the word recognition flow.}
 \label{fig:design-sequence-word}
-\end{sidewaysfigure}
+\end{figure}
 
 The buffer-fill phase differs from a naive ``classify every frame'' loop
 in four behavioural stages that together make up the single-shot lock. A
@@ -456,12 +437,10 @@ retained in memory so that the second resumption is essentially
 instantaneous). Figure~\ref{fig:design-state} summarises the
 transitions.
 
-\begin{figure}[h]
+\begin{figure}[!ht]
 \centering
 \includegraphics[width=\textwidth]{figures/ch3_state.pdf}
-\caption[State diagram of the mobile application.]{State diagram of the mobile application. The
-\texttt{Streaming} state is the steady state in which both
-sequence diagrams of the previous subsections execute.}
+\caption{State diagram of the mobile application.}
 \label{fig:design-state}
 \end{figure}
 
@@ -480,7 +459,7 @@ mixup-augmented training step that the word model relies on; and
 Section~\ref{sec:design-algorithm-ensemble} fixes the
 logit-averaging inference step that the ensemble variant performs
 at run time. The concrete hyperparameter values that populate the
-algorithms appear in Chapter~\ref{ch:implementation}.
+algorithms appear in Section~\ref{ch:implementation}.
 
 \subsection{Per-Frame Feature Representation}
 \label{sec:design-algorithm-normalisation}
@@ -535,7 +514,7 @@ outer training loop (initialisation, optimiser update,
 learning-rate scheduling and early stopping) is the standard
 supervised template and is not reproduced here.
 
-\begin{algorithm}[h]
+\begin{algorithm}[!ht]
 \caption{Mixup-augmented training step (word classifier).}
 \label{alg:design-train}
 \begin{algorithmic}[1]
@@ -562,7 +541,7 @@ supervised template and is not reproduced here.
 
 Three modelling choices in Algorithm~\ref{alg:design-train} are
 worth flagging because they directly affect the empirical results
-of Chapter~\ref{ch:test-results}. Sequence augmentations are
+of Section~\ref{ch:test-results}. Sequence augmentations are
 applied \emph{before} the mixup interpolation, not after, so that
 the interpolation operates on already-perturbed inputs rather than
 on two clean clips. Label smoothing is applied inside each
@@ -583,7 +562,7 @@ Algorithm~\ref{alg:design-ensemble} states the inference step that
 the mobile demo invokes whenever the user has selected the
 ensemble variant from the model toggle.
 
-\begin{algorithm}[h]
+\begin{algorithm}[!ht]
 \caption{Logit-averaged ensemble inference (word classifier).}
 \label{alg:design-ensemble}
 \begin{algorithmic}[1]
@@ -622,16 +601,16 @@ quantifies this overhead on the test device.
 \section{Summary}
 \label{sec:design-summary}
 
-This chapter has converted the project proposal into a small set
+This section has converted the project proposal into a small set
 of functional and non-functional requirements, has presented the
 system from the user, structural and behavioural viewpoints, and
 has pinned down the three algorithmic primitives that drive most
-of the non-trivial run-time behaviour. The next chapter takes each
+of the non-trivial run-time behaviour. The next section takes each
 of these design elements and documents the concrete components,
 libraries and hyperparameters that realise them on the development
 laptop and on the Android test device. Wherever the implementation
 deviates from the design as stated here, most notably in the
 choice of a native Kotlin mobile stack in place of the React
 Native stack suggested by the proposal, the deviation is recorded
-explicitly in Chapter~\ref{ch:implementation} together with the
+explicitly in Section~\ref{ch:implementation} together with the
 engineering reason for the change.

@@ -1,7 +1,7 @@
 \chapter{Related Work}
 \label{ch:related-work}
 
-This chapter surveys the prior work on which the present thesis builds.
+This section surveys the prior work on which the present thesis builds.
 Section~\ref{sec:related-image} reviews image-based recognition systems
 that classify static signs from individual video frames.
 Section~\ref{sec:related-landmark} turns to landmark-based methods, which
@@ -11,7 +11,7 @@ word-level recognition on the WLASL benchmark, covering recurrent,
 three-dimensional convolutional, and transformer-based approaches.
 Section~\ref{sec:related-mobile} discusses what is known about deploying
 such models on mobile devices. Section~\ref{sec:related-position} closes
-the chapter by situating the contribution of this thesis within the
+the section by situating the contribution of this thesis within the
 surveyed landscape.
 
 \section{Image-Based Sign Language Recognition}
@@ -37,7 +37,7 @@ order-of-magnitude fewer parameters than earlier networks: its B0
 variant reaches 76.3\% Top-1 with only 5.3 million parameters. This
 favourable accuracy-versus-cost trade-off motivates its use as the
 static-frame backbone of the present work
-(Chapter~\ref{ch:implementation}).
+(Section~\ref{ch:implementation}).
 
 Image-based pipelines remain useful for fingerspelling and isolated
 static signs. For word-level recognition, however, they must be
@@ -110,7 +110,7 @@ per-frame CNN features into a recurrent network, a Pose-TGCN that
 applies a temporal graph-convolutional network over extracted body
 pose joints, and an Inflated 3D ConvNet operating on the raw video.
 On the smallest, hundred-class subset that anchors the comparisons in
-this thesis (Chapter~\ref{ch:test-results}), these three baselines
+this thesis (Section~\ref{ch:test-results}), these three baselines
 reach 25.97\%, 55.43\%, and 65.89\% Top-1 accuracy respectively.
 
 Recurrent networks remain a natural fit for variable-length sign
@@ -123,7 +123,7 @@ running such a recurrent unit in both temporal directions and
 concatenating the resulting hidden states yields strictly more
 contextual information per frame. The two-layer bidirectional LSTM
 that this thesis runs on top of MediaPipe landmarks
-(Chapter~\ref{ch:implementation}) is a direct instance of this
+(Section~\ref{ch:implementation}) is a direct instance of this
 combination.
 
 A second line of work pushes the recognition accuracy of
@@ -174,10 +174,10 @@ practical note rather than as a primary evaluation axis.
 
 This thesis takes the opposite emphasis. Because the target deployment
 platform is a consumer Android smartphone
-(Chapter~\ref{ch:implementation}), the recognition pipeline is
+(Section~\ref{ch:implementation}), the recognition pipeline is
 constrained from the outset to a lightweight on-device inference
-runtime with a small model footprint, and the test-results chapter
-(Chapter~\ref{ch:test-results}) reports model size and on-device
+runtime with a small model footprint, and the test-results section
+(Section~\ref{ch:test-results}) reports model size and on-device
 throughput alongside Top-1 accuracy on WLASL-100.
 
 Recent landmark-only work has explicitly targeted edge devices on the
@@ -197,43 +197,38 @@ smartphone-collected ASL fingerspelling dataset
 FSboard~\cite{georg2024fsboard} further documents that the
 smartphone-deployment regime is now treated as a first-class research
 target rather than a niche concern. Relative to this body of work,
-the contribution of the present chapter is the end-to-end on-device
+the contribution of the present section is the end-to-end on-device
 characterisation of four classifiers (image and landmark $\times$
 letter and word) under a single Android deployment, with throughput
-and latency reported on both a budget and a flagship handset and a
-single-user out-of-distribution gap quantified on each cell; the
-following section locates the resulting design in that landscape.
+and latency on both a budget and a flagship handset and a single-user
+out-of-distribution gap quantified on each cell.
 
-\section{Position of This Work}
+\section{Research Gap and Contribution}
 \label{sec:related-position}
 
-The present thesis occupies the corner of the design space that the
-surveyed literature has explored least systematically: word-level
-American Sign Language recognition driven entirely by MediaPipe hand
-landmarks, evaluated on the WLASL-100 subset, and deployed end-to-end
-on a consumer Android smartphone. Relative to the strongest reported
+The present thesis occupies the design-space corner the surveyed
+literature has explored least systematically: word-level American
+Sign Language recognition driven entirely by MediaPipe hand
+landmarks, evaluated on WLASL-100 and deployed end-to-end on a
+consumer Android smartphone. Relative to the strongest reported
 methods on this subset, namely the cross-domain TK-3D ConvNet of Li
 et~al.~\cite{li2020transferring} and the pose-guided Fusion-3 of
-Hosain et~al.~\cite{hosain2021fusion}, the design accepts a sizable
-Top-1 accuracy gap (Chapter~\ref{ch:test-results}) in exchange for
-discarding the RGB 3D convolutional pipeline that both systems
-require. Relative to the pose-only transformer baseline of
+Hosain et~al.~\cite{hosain2021fusion}, the design trades a sizable
+Top-1 accuracy gap (Section~\ref{ch:test-results}) for discarding the
+RGB 3D convolutional pipeline both require. Relative to the pose-only transformer baseline of
 Boh\'a\v{c}ek and Hr\'uz~\cite{bohacek2022spoter}, the pipeline
-differs in two respects: the temporal model is a bidirectional LSTM
-rather than a transformer encoder--decoder, and the evaluation
-explicitly reports on-device latency and model size alongside Top-1
-accuracy. Relative to the contemporaneous landmark-only PBRC of Singh
+differs in two respects: a bidirectional LSTM rather than a
+transformer encoder--decoder, and an evaluation that reports
+on-device latency and model size alongside Top-1 accuracy. Relative
+to the contemporaneous landmark-only PBRC of Singh
 et~al.~\cite{singh2026pbrc}, the modelling difference is recurrence
-(a two-layer BiLSTM) versus a parallel echo-state reservoir; the
-evaluation difference is the on-device characterisation on Android
-budget and flagship handsets, which neither PBRC nor any other
-landmark-only WLASL-100 method published to date reports. The resulting contribution is therefore not a new accuracy record
-on WLASL-100 -- the present model trails the closest published
-analogue (PBRC, hands-only MediaPipe) by roughly five points and
-the pose-transformer SPOTER by roughly seven, on the same
-canonical person-mixed split -- but a demonstration that a
-landmark-only, mobile-deployable pipeline can be evaluated on
-that same benchmark under the same protocol with its accuracy,
-footprint and on-device latency all reported jointly, where the
-within-family methods that lead the accuracy column report only
-the first of the three.
+(a two-layer BiLSTM) versus a parallel echo-state reservoir, and the
+evaluation adds an on-device characterisation on Android budget and
+flagship handsets that no prior landmark-only WLASL-100 method
+reports. The resulting contribution is therefore not a new accuracy
+record on WLASL-100 -- the present model trails PBRC by roughly five
+points and SPOTER by roughly seven on the same person-mixed split --
+but a demonstration that a landmark-only, mobile-deployable pipeline
+can be evaluated on that benchmark with its accuracy, footprint and
+on-device latency reported jointly, where the leading methods report
+only accuracy.

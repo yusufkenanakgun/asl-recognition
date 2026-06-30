@@ -1,0 +1,285 @@
+{
+  "test_dir": "data\\asl-independent-test",
+  "num_images": 870,
+  "num_classes": 29,
+  "efficientnet": {
+    "accuracy": 59.77,
+    "correct": 520,
+    "total": 870,
+    "per_class": {
+      "A": {
+        "correct": 10,
+        "total": 30
+      },
+      "B": {
+        "correct": 22,
+        "total": 30
+      },
+      "C": {
+        "correct": 10,
+        "total": 30
+      },
+      "D": {
+        "correct": 14,
+        "total": 30
+      },
+      "E": {
+        "correct": 13,
+        "total": 30
+      },
+      "F": {
+        "correct": 5,
+        "total": 30
+      },
+      "G": {
+        "correct": 15,
+        "total": 30
+      },
+      "H": {
+        "correct": 30,
+        "total": 30
+      },
+      "I": {
+        "correct": 23,
+        "total": 30
+      },
+      "J": {
+        "correct": 22,
+        "total": 30
+      },
+      "K": {
+        "correct": 27,
+        "total": 30
+      },
+      "L": {
+        "correct": 26,
+        "total": 30
+      },
+      "M": {
+        "correct": 19,
+        "total": 30
+      },
+      "N": {
+        "correct": 16,
+        "total": 30
+      },
+      "O": {
+        "correct": 20,
+        "total": 30
+      },
+      "P": {
+        "correct": 27,
+        "total": 30
+      },
+      "Q": {
+        "correct": 23,
+        "total": 30
+      },
+      "R": {
+        "correct": 28,
+        "total": 30
+      },
+      "S": {
+        "correct": 0,
+        "total": 30
+      },
+      "T": {
+        "correct": 2,
+        "total": 30
+      },
+      "U": {
+        "correct": 20,
+        "total": 30
+      },
+      "V": {
+        "correct": 6,
+        "total": 30
+      },
+      "W": {
+        "correct": 26,
+        "total": 30
+      },
+      "X": {
+        "correct": 21,
+        "total": 30
+      },
+      "Y": {
+        "correct": 28,
+        "total": 30
+      },
+      "Z": {
+        "correct": 4,
+        "total": 30
+      },
+      "del": {
+        "correct": 22,
+        "total": 30
+      },
+      "nothing": {
+        "correct": 24,
+        "total": 30
+      },
+      "space": {
+        "correct": 17,
+        "total": 30
+      }
+    }
+  },
+  "mlp": {
+    "accuracy_all_handclasses": 85.0,
+    "accuracy_detected": 90.72,
+    "hand_detection_rate": 93.69,
+    "hand_classes_total": 840,
+    "detected": 787,
+    "correct": 714,
+    "no_hand_failures": 53,
+    "nothing": {
+      "total": 30,
+      "correct": 30,
+      "false_positive": 0
+    },
+    "per_class": {
+      "A": {
+        "correct": 30,
+        "detected": 30,
+        "total": 30
+      },
+      "B": {
+        "correct": 29,
+        "detected": 29,
+        "total": 30
+      },
+      "C": {
+        "correct": 21,
+        "detected": 28,
+        "total": 30
+      },
+      "D": {
+        "correct": 28,
+        "detected": 28,
+        "total": 30
+      },
+      "E": {
+        "correct": 30,
+        "detected": 30,
+        "total": 30
+      },
+      "F": {
+        "correct": 30,
+        "detected": 30,
+        "total": 30
+      },
+      "G": {
+        "correct": 25,
+        "detected": 30,
+        "total": 30
+      },
+      "H": {
+        "correct": 30,
+        "detected": 30,
+        "total": 30
+      },
+      "I": {
+        "correct": 20,
+        "detected": 20,
+        "total": 30
+      },
+      "J": {
+        "correct": 30,
+        "detected": 30,
+        "total": 30
+      },
+      "K": {
+        "correct": 26,
+        "detected": 26,
+        "total": 30
+      },
+      "L": {
+        "correct": 29,
+        "detected": 29,
+        "total": 30
+      },
+      "M": {
+        "correct": 24,
+        "detected": 27,
+        "total": 30
+      },
+      "N": {
+        "correct": 13,
+        "detected": 29,
+        "total": 30
+      },
+      "O": {
+        "correct": 24,
+        "detected": 25,
+        "total": 30
+      },
+      "P": {
+        "correct": 26,
+        "detected": 28,
+        "total": 30
+      },
+      "Q": {
+        "correct": 28,
+        "detected": 28,
+        "total": 30
+      },
+      "R": {
+        "correct": 28,
+        "detected": 30,
+        "total": 30
+      },
+      "S": {
+        "correct": 22,
+        "detected": 28,
+        "total": 30
+      },
+      "T": {
+        "correct": 23,
+        "detected": 30,
+        "total": 30
+      },
+      "U": {
+        "correct": 27,
+        "detected": 30,
+        "total": 30
+      },
+      "V": {
+        "correct": 13,
+        "detected": 29,
+        "total": 30
+      },
+      "W": {
+        "correct": 30,
+        "detected": 30,
+        "total": 30
+      },
+      "X": {
+        "correct": 26,
+        "detected": 30,
+        "total": 30
+      },
+      "Y": {
+        "correct": 30,
+        "detected": 30,
+        "total": 30
+      },
+      "Z": {
+        "correct": 30,
+        "detected": 30,
+        "total": 30
+      },
+      "del": {
+        "correct": 22,
+        "detected": 23,
+        "total": 30
+      },
+      "space": {
+        "correct": 20,
+        "detected": 20,
+        "total": 30
+      }
+    }
+  },
+  "device": "cuda"
+}

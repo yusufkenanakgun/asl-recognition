@@ -1,14 +1,14 @@
 \chapter{Implementation}
 \label{ch:implementation}
 
-This chapter documents how the design presented in
-Chapter~\ref{ch:analysis-design} was translated into a working system. It
+This section documents how the design presented in
+Section~\ref{ch:analysis-design} was translated into a working system. It
 covers the development environment, the two datasets used for the letter
 and word recognition tasks, the three classification models that were
 trained, and the Android demonstration application that hosts all of
 them on a single device. Hyperparameters, library versions and dataset
 statistics are reported in tables so that the experiments described in
-Chapter~\ref{ch:test-results} are fully reproducible.
+Section~\ref{ch:test-results} are fully reproducible.
 
 %==============================================================================
 \section{Development Environment}
@@ -27,19 +27,19 @@ The training pipeline is implemented entirely in Python~3.10 inside a
 virtual environment. PyTorch~2.6 with the CUDA~12.4 build provides the
 model and optimizer code, \texttt{torchvision}~0.21 supplies the
 EfficientNet-B0 backbone with its ImageNet weights, and Google's
-MediaPipe~Hands~0.10.32~\cite{zhang2020mediapipe} handles hand-landmark
+MediaPipe Hands 0.10.32~\cite{zhang2020mediapipe} handles hand-landmark
 extraction. OpenCV~4.13 is used to decode video files and to read
 frames from the webcam during preliminary tests. NumPy and
 scikit-learn cover array handling and metric computation, while
 Matplotlib and Seaborn generate the confusion matrices and learning
-curves reported in Chapter~\ref{ch:test-results}. The Android
+curves reported in Section~\ref{ch:test-results}. The Android
 application uses a separate but matched stack: the user interface is
 written in Kotlin with Jetpack Compose (Material~3), the camera
 pipeline is built on CameraX, and hand-landmark inference is delegated
 to the MediaPipe Tasks~\textit{HandLandmarker} component in
 \textsc{live\_stream} mode. The four classification models are
 converted to TensorFlow~Lite and executed through the
-\texttt{org.tensorflow:tensorflow-lite} runtime, with the XNNPACK
+\texttt{org.tensorflow:\allowbreak tensorflow-lite} runtime, with the XNNPACK
 delegate enabled where applicable. Keeping the training stack in
 PyTorch and the deployment stack in TFLite reflects a deliberate
 split: PyTorch offers the research conveniences (mixed-precision,
@@ -54,7 +54,7 @@ are reported alongside the corresponding model in
 Sections~\ref{sec:impl-efficientnet}--\ref{sec:impl-lstm} and
 consolidated in Table~\ref{tab:impl-training-summary}.
 
-\begin{table}[!htbp]
+\begin{table}[!ht]
 \centering
 \caption{Software stack used for training and deployment.}
 \label{tab:impl-environment}
@@ -120,20 +120,19 @@ share the same resize-and-normalize steps but omit augmentation. For
 the landmark-based letter model, MediaPipe is applied once per image
 and a 63-dimensional vector of joint coordinates is cached on disk;
 details of this stage are given in Section~\ref{sec:impl-landmark}.
-Figure~\ref{fig:impl-asl-samples} shows a small sample of training
-images drawn from eight classes that exemplify the range of
-handshapes the classifier has to discriminate.
+Figure~\ref{fig:impl-asl-samples} shows representative samples drawn
+from eight classes of the test partition---the static handshapes for
+the letters \textit{A}, \textit{E}, \textit{M}, \textit{N}, \textit{R}
+and \textit{V} together with the auxiliary classes \texttt{del} and
+\texttt{space}---that exemplify the range of handshapes the classifier
+has to discriminate. All images are captured against a uniform
+background at a fixed distance, which contributes to the near-ceiling
+accuracy reported in Section~\ref{ch:test-results}.
 
-\begin{figure}[!htbp]
+\begin{figure}[!ht]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/ch4_asl_alphabet_samples.png}
-\caption[Representative samples from the ASL Alphabet test partition.]{Representative samples from the ASL Alphabet test partition:
-the static handshapes for the letters \textit{A}, \textit{E},
-\textit{M}, \textit{N}, \textit{R}, \textit{V} together with the
-auxiliary classes \texttt{del} and \texttt{space}. All images are
-captured against a uniform background at a fixed distance, which
-contributes to the near-ceiling accuracy reported in
-Chapter~\ref{ch:test-results}.}
+\caption{Representative samples from the ASL Alphabet test partition.}
 \label{fig:impl-asl-samples}
 \end{figure}
 
@@ -157,12 +156,13 @@ and one private collection was unreachable. Two complementary
 recovery paths were used. First, a preprocessed Kaggle bundle of
 WLASL2000 was filtered down to the 100 target classes; this provided
 the bulk of clean clips. Second, the \texttt{url} field in the
-official WLASL metadata was scraped to retrieve \num{448} additional
+official WLASL metadata was scraped to recover additional
 videos directly from institutional ASL dictionary sites
 (\textsc{aslu}, \textsc{asl5200}, \textsc{valencia-asl},
 \textsc{northtexas}), which preserved their content. After
-deduplication, \num{1465} videos were retained, a 44\% increase over
-the \num{1013}-video baseline obtained from the Kaggle bundle alone.
+deduplication, \num{1465} videos were retained --- a net gain of
+\num{452} over the \num{1013}-video baseline obtained from the Kaggle
+bundle alone, a 44\% increase.
 Per-class training counts rose from an average of 7.5 to 10.2 videos.
 Holding every other component of the word pipeline fixed, this
 data-recovery step alone accounts for $+16.08$ validation Top-1
@@ -181,44 +181,43 @@ MediaPipe \textit{HandLandmarker} configured with
 recovered. The landmark cache is stored once per dataset version and
 reused across all training runs.
 Figure~\ref{fig:impl-wlasl-strips} illustrates the input that the
-word classifier ultimately consumes: a fixed-length sequence of
-frames sampled uniformly across the active window of a single
-isolated sign. The two panels were chosen to span the one-handed and
-two-handed cases that dominate WLASL-100.
+word classifier ultimately consumes: for each clip, six evenly-spaced
+frames sampled uniformly across the active window of a single isolated
+sign. The two panels were chosen to span the one-handed and two-handed
+cases that dominate WLASL-100: the one-handed sign \emph{drink}, in
+which the dominant hand starts at rest and travels to the mouth in a
+single motion, and the two-handed sign \emph{mother}, in which both
+hands are active and the dominant hand makes thumb contact with the
+chin. The two-channel landmark representation of
+Section~\ref{sec:impl-landmark} is what allows the BiLSTM to follow
+the trajectory of one hand or to use both hands jointly.
 
-\begin{figure}[!htbp]
+\begin{figure}[!ht]
 \centering
 \begin{subfigure}{0.92\textwidth}
 \centering
 \includegraphics[width=\linewidth]{figures/ch4_wlasl_strip_drink.png}
-\caption{One-handed sign \emph{drink}. The dominant hand starts at
-rest and travels to the mouth in a single motion.}
+\caption{One-handed sign \emph{drink}.}
 \label{fig:impl-wlasl-drink}
 \end{subfigure}\\[6pt]
 \begin{subfigure}{0.92\textwidth}
 \centering
 \includegraphics[width=\linewidth]{figures/ch4_wlasl_strip_mother.png}
-\caption{Two-handed sign \emph{mother}. Both hands are active and the
-dominant hand makes thumb contact with the chin.}
+\caption{Two-handed sign \emph{mother}.}
 \label{fig:impl-wlasl-mother}
 \end{subfigure}
-\caption[Sampled frames from two representative WLASL clips.]{Six
-evenly-spaced frames from two representative WLASL clips. The
-two-channel landmark representation of
-Section~\ref{sec:impl-landmark} is what allows the BiLSTM to see the
-trajectory of one hand (top row) or to use both hands jointly
-(bottom row).}
+\caption{Sampled frames from two representative WLASL clips.}
 \label{fig:impl-wlasl-strips}
 \end{figure}
 
 Two limitations of the recovered dataset are acknowledged here and
-revisited in the discussion of Chapter~\ref{ch:test-results}. First,
+revisited in the discussion of Section~\ref{ch:test-results}. First,
 the remaining sources skew towards dictionary-style content recorded
 by professional signers, which under-represents informal everyday
 signing. Second, the official WLASL split is person-mixed, so the
 same signer can appear in both the training and the test partitions;
 a stricter signer-disjoint evaluation is listed as future work in
-Chapter~\ref{ch:conclusion}.
+Section~\ref{ch:conclusion}.
 
 \subsection{Landmark Extraction and Feature Encoding}
 \label{sec:impl-landmark}
@@ -317,7 +316,7 @@ detector on the dataset's low-resolution crops. Third, motion-blurred
 or partially out-of-frame images defeat the detector even when a
 hand is present. This 73\% recovery rate is a real cost of the
 landmark pipeline and is reported alongside the classifier's
-accuracy in Chapter~\ref{ch:test-results}; the EfficientNet model is
+accuracy in Section~\ref{ch:test-results}; the EfficientNet model is
 not affected because it consumes the original pixels regardless of
 whether MediaPipe would have succeeded.
 
@@ -332,8 +331,8 @@ stake out the two ends of the accuracy/footprint trade-off that is
 central to this thesis: a 15.71~MB image network that operates on
 every image and a 0.24~MB landmark network that depends on a
 separate detector for its input. The trade-off is revisited
-quantitatively in Chapter~\ref{ch:test-results} and qualitatively in
-Chapter~\ref{ch:conclusion}.
+quantitatively in Section~\ref{ch:test-results} and qualitatively in
+Section~\ref{ch:conclusion}.
 
 %==============================================================================
 \section{Word-Level Model: Bidirectional LSTM}
@@ -480,7 +479,7 @@ of the word model so that they can be reproduced from a single page.
 Random seeds, dataset-version pointers and exact training times are
 deferred to Section~\ref{sec:impl-repro}.
 
-\begin{table}[!htbp]
+\begin{table}[!ht]
 \centering
 \caption{Hyperparameters of the word recognition model.}
 \label{tab:impl-lstm-hparams}
@@ -520,7 +519,7 @@ Ensemble                   & 5 seeds, logit averaging \\
 
 The four trained models share a single Android application that
 serves as the project's deliverable demo and as the platform on
-which the comparative claims of Chapter~\ref{ch:test-results} are
+which the comparative claims of Section~\ref{ch:test-results} are
 validated. The demo lets a user point the device's front camera at
 one or two hands and see Top-3 predictions, frame rate and
 end-to-end latency rendered in real time. Two classifiers are
@@ -553,7 +552,7 @@ and maintains a sliding FPS estimate. \texttt{InferenceManager} owns
 one classifier instance per model type and dispatches landmark or
 pixel input to the currently selected one. The high-level data flow
 and the per-frame sequence diagram are presented in
-Chapter~\ref{ch:analysis-design}; the discussion here focuses on
+Section~\ref{ch:analysis-design}; the discussion here focuses on
 implementation choices.
 
 \subsection{Per-Frame Inference Pipeline}
@@ -686,7 +685,7 @@ gate screen requests it explicitly rather than failing silently in
 the preview surface. Figure~\ref{fig:ui-entry} shows these two
 entry surfaces.
 
-\begin{figure}[!htbp]
+\begin{figure}[!ht]
 \centering
 \begin{subfigure}{0.24\textwidth}
 \centering
@@ -698,9 +697,7 @@ entry surfaces.
 \includegraphics[width=\linewidth]{figures/ui_permission.jpg}
 \caption{Permission gate}
 \end{subfigure}
-\caption[Entry-surface screens: Home and camera-permission gate.]{Entry-surface screens: Home (navigation to Letters and
-Words) and the camera-permission gate displayed on first launch
-or after rejection.}
+\caption{Entry-surface screens: Home and camera-permission gate.}
 \label{fig:ui-entry}
 \end{figure}
 
@@ -723,7 +720,7 @@ application code, and is also the most likely source of the
 on-device accuracy gap reported in
 Section~\ref{sec:results-qualitative-letters}.
 
-\begin{figure}[!htbp]
+\begin{figure}[!ht]
 \centering
 \begin{subfigure}{0.21\textwidth}
 \centering
@@ -745,16 +742,11 @@ Section~\ref{sec:results-qualitative-letters}.
 \includegraphics[width=\linewidth]{figures/ui_tecno_space.jpg}
 \caption{space}
 \end{subfigure}
-\caption[Letters tab on the entry-level TECNO SPARK 20C.]{Letters tab on the entry-level TECNO SPARK 20C, showing
-four representative classes (\textit{M}, \textit{N}, \textit{W},
-\texttt{space}). The top-right badge reports live FPS and end-to-end
-latency (Section~\ref{sec:results-on-device-letters}); the bottom
-panel displays the Top-3 prediction together with each class's
-confidence.}
+\caption{Letters tab on the entry-level TECNO SPARK 20C.}
 \label{fig:ui-letters-tecno}
 \end{figure}
 
-\begin{figure}[!htbp]
+\begin{figure}[!ht]
 \centering
 \begin{subfigure}{0.21\textwidth}
 \centering
@@ -776,11 +768,7 @@ confidence.}
 \includegraphics[width=\linewidth]{figures/ui_xiaomi_X.jpg}
 \caption{X}
 \end{subfigure}
-\caption[Letters tab on the flagship Xiaomi 15T Pro.]{Letters tab on the flagship Xiaomi~15T~Pro, showing a
-disjoint subset of classes (\textit{A}, \textit{B}, \textit{L},
-\textit{X}). The on-screen layout is identical to the TECNO build;
-the sharper preview is attributable to the device's image-signal
-pipeline.}
+\caption{Letters tab on the flagship Xiaomi~15T~Pro.}
 \label{fig:ui-letters-xiaomi}
 \end{figure}
 
@@ -796,7 +784,7 @@ screen until an eight-frame hand-down signal releases the lock.
 Figure~\ref{fig:ui-words-drink} reproduces the three states for
 the WLASL sign \texttt{drink}, captured on the Xiaomi.
 
-\begin{figure}[!htbp]
+\begin{figure}[!ht]
 \centering
 \begin{subfigure}{0.26\textwidth}
 \centering
@@ -813,11 +801,7 @@ the WLASL sign \texttt{drink}, captured on the Xiaomi.
 \includegraphics[width=\linewidth]{figures/ui_drink_result.jpg}
 \caption{Latched prediction}
 \end{subfigure}
-\caption[Three states of the Words tab single-shot lock on the sign \texttt{drink}.]{The three states of the Words tab single-shot lock
-(Section~\ref{sec:impl-android-pipeline}) on the WLASL sign
-\texttt{drink}, captured on the Xiaomi~15T~Pro: (a) the
-\textsf{Get Ready} countdown, (b) the buffer-fill overlay, and
-(c) the latched top-1 prediction.}
+\caption{Three states of the Words tab single-shot lock on the sign \texttt{drink}.}
 \label{fig:ui-words-drink}
 \end{figure}
 
@@ -825,36 +809,26 @@ the WLASL sign \texttt{drink}, captured on the Xiaomi.
 \section{Reproducibility}
 \label{sec:impl-repro}
 
-Every result reported in Chapter~\ref{ch:test-results} can be
-reproduced from a clean checkout of the project
-repository.\footnote{Source code, training scripts and trained
-checkpoints are hosted at
-\url{https://github.com/yusufkenanakgun/asl-recognition}.} The
-training environment is rebuilt from \texttt{requirements.txt} on
-a Python~3.10 virtual environment with CUDA~12.4
-(Table~\ref{tab:impl-environment}); the Android project under
-\texttt{android/} targets API~34 with Gradle~8.x. Datasets are
-placed in \texttt{data/asl\_alphabet/} (Kaggle layout) and
-\texttt{data/wlasl/videos\_v2/}; landmark caches are produced
-once by \texttt{src/extract\_kaggle\_landmarks.py} and
-\texttt{src/faz6/extract\_v2.py}, both deterministic given a
+Every result in Section~\ref{ch:test-results} is reproducible from
+a clean checkout of the project repository~\cite{akgun2026code},
+which hosts the code, training scripts and checkpoints. The
+training environment is rebuilt from the pinned dependency list
+(Python~3.10, CUDA~12.4; Table~\ref{tab:impl-environment}), and the
+bundled Android project targets API~34 with Gradle~8.x. Each dataset
+is placed where its loader expects, and the landmark caches are
+produced once by dedicated extraction scripts, deterministic given a
 fixed MediaPipe version.
 
-Each model has its own entry-point script:
-\texttt{src/faz3/train\_cnn.py} for EfficientNet-B0,
-\texttt{src/faz4/train\_mlp.py} for the MLP, and
-\texttt{src/faz6/train\_v2.py} for the BiLSTM (invoked once per
-seed; the ensemble runs seeds $\{0, \dots, 4\}$ and is evaluated
-by \texttt{src/faz6/evaluate\_v2.py --ensemble}, which performs
-the logit-averaging of
-Algorithm~\ref{alg:design-ensemble}). Random seeds are fixed at
-42 for the image and MLP classifiers and at 0 for the single
-BiLSTM. Training writes the validation-best checkpoint as
-\texttt{best.pt} together with a JSON metrics dump; final
-training times and checkpoint sizes are summarised in
+Each model has its own training script: one each for EfficientNet-B0,
+the landmark MLP, and the BiLSTM (run once per seed; the ensemble
+runs seeds $\{0, \dots, 4\}$, scored by an evaluation script applying
+Algorithm~\ref{alg:design-ensemble}). Random seeds are fixed at 42
+for the image and MLP classifiers and 0 for the single BiLSTM.
+Training writes the validation-best checkpoint with a JSON metrics
+dump; training times and checkpoint sizes appear in
 Table~\ref{tab:impl-training-summary}.
 
-\begin{table}[!htbp]
+\begin{table}[!ht]
 \centering
 \caption{Training time and final checkpoint size for the four models.}
 \label{tab:impl-training-summary}
@@ -870,15 +844,10 @@ BiLSTM ensemble (5 seeds) & 76--100 each & 9.5 min total & 4.7\,M & 27.55~MB \\
 \end{tabular}
 \end{table}
 
-The Android side reads the same checkpoints after
-\texttt{src/convert\_to\_tflite.py} traces them through ONNX and
-emits TFLite flatbuffers at \texttt{models/tflite/}; the four
-files (49~MB total) are copied into
-\texttt{android/app/src/main/assets/} before assembly and the APK
-is installed with \texttt{adb install}. Per-seed metrics
-(\texttt{models/faz6\_v2/seed\_*.json}), the cached
-paired-bootstrap intervals
-(\texttt{stat\_analysis.json}), and the per-row ablation outputs
-(\texttt{ablation/}) are committed alongside the code so that
-every numerical claim in Chapter~\ref{ch:test-results} can be
-regenerated without re-running the full ablation grid.
+A conversion script traces the same checkpoints through ONNX into
+TFLite flatbuffers; the four files (49~MB total) are installed into
+the application with \texttt{adb install}. The per-seed
+metrics, paired-bootstrap intervals, and per-row ablation outputs are
+committed alongside the code, so every numerical claim in
+Section~\ref{ch:test-results} can be regenerated without re-running
+the ablation grid.

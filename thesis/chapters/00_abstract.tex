@@ -1,43 +1,36 @@
-\chapter*{Abstract}
-\addcontentsline{toc}{chapter}{Abstract}
-
-\begin{spacing}{1.4}
+\begin{abstract}
 This thesis presents an end-to-end American Sign Language (ASL)
-recognition system that runs entirely on a consumer Android phone.
-Two complementary tasks are addressed: fingerspelling recognition
-over the 29 classes of the ASL Alphabet dataset, and word-level
-recognition over the 100-class WLASL-100 vocabulary. For the letter
-task, two classifiers are trained and compared: an EfficientNet-B0
-that consumes raw image crops and a compact multi-layer perceptron
-over 21 MediaPipe hand landmarks. On the single-signer ASL Alphabet
-test split they reach \SI{100}{\percent} and \SI{99.38}{\percent}
-Top-1 respectively, read as a pipeline sanity check rather than
-capability claims; the landmark model ships in a \SI{0.24}{MB}
-checkpoint. A single-user on-device manual evaluation under
-realistic camera conditions inverts the offline ranking on the
-budget phone (landmark MLP \SI{100}{\percent}, image network
-\SI{92.9}{\percent}), motivating the landmark variant as the
-deployment default for the letter task. For the word task, a
-bidirectional LSTM is trained on a two-handed 128-dimensional
-landmark feature stream extracted from a yt-dlp-recovered WLASL-100
-corpus (\num{1465} clips, a \SI{44}{\percent} increase over the
-\num{1013}-video Kaggle baseline). A five-seed logit-averaging
-ensemble reaches \SI{56.22}{\percent} Top-1 and
-\SI{81.09}{\percent} Top-5 on the WLASL-100 test partition under
-the canonical person-mixed split, clearing the \SI{40}{\percent}
-Top-1 acceptance bar adopted for this thesis by sixteen percentage
-points. The WLASL split is person-mixed, so this number is a
-benchmark-comparable figure, not a signer-independent estimate.
-A nine-step forward-additive ablation
-decomposes the gain from a \SI{20}{\percent} baseline to the
-\SI{60.08}{\percent} final validation accuracy into three pillars
-of comparable weight: data engineering, the extraction pipeline,
-and training-recipe refinements. All four classifiers are exported
-to TensorFlow Lite and deployed in an Android application built
-around CameraX and MediaPipe Hands. On-device throughput, latency,
-and the OOD accuracy gap are characterised on a budget
-(TECNO SPARK 20C) and a flagship (Xiaomi 15T Pro); word accuracy
-is flagship-only because entry-level ensemble latency is too high
-for interactive use. The evaluation produces a device-conditional
-model-selection guideline.
-\end{spacing}
+recognition system that runs on a consumer Android phone and
+addresses two tasks: fingerspelling over the 29 classes of the ASL
+Alphabet dataset and word-level recognition over the 100-class
+WLASL-100 vocabulary. For the letter task, two classifiers are
+compared: an EfficientNet-B0 over raw image crops and a compact
+multi-layer perceptron over 21 MediaPipe hand landmarks. On the
+single-signer ASL Alphabet test split they reach \SI{100}{\percent}
+and \SI{99.38}{\percent} Top-1, read as a sanity check rather than a
+capability claim; the landmark model is \SI{0.24}{MB}. Re-evaluated
+without retraining on an independent \num{870}-image set from
+different signers and backgrounds, the image network collapses to
+\SI{59.77}{\percent} while the landmark MLP retains
+\SI{90.72}{\percent} on detected hands, isolating capture-domain
+memorization in the image model and cross-domain robustness in the
+landmark model; an on-device evaluation likewise inverts this ranking
+on the budget phone, making the landmark variant the deployment
+default for letters. For the word task, a bidirectional LSTM is
+trained on a two-handed 128-dimensional landmark stream extracted from
+a yt-dlp-recovered WLASL-100 corpus (\num{1465} clips, a
+\SI{44}{\percent} increase over the \num{1013}-video Kaggle baseline).
+A five-seed logit-averaging ensemble reaches \SI{56.22}{\percent}
+Top-1 and \SI{81.09}{\percent} Top-5 under the person-mixed split,
+clearing the \SI{40}{\percent} acceptance bar by sixteen points; being
+person-mixed, this is a benchmark-comparable figure rather than a
+signer-independent estimate. A nine-step ablation traces the gain from
+a \SI{20}{\percent} baseline to \SI{60.08}{\percent} validation
+accuracy across three contributors of comparable weight: data
+engineering, the extraction pipeline, and the training recipe. All
+four classifiers are exported to TensorFlow Lite and deployed in a
+CameraX and MediaPipe Hands Android app; throughput, latency, and the
+OOD gap are characterised on a budget (TECNO SPARK 20C) and a flagship
+(Xiaomi 15T Pro), yielding a device-conditional model-selection
+guideline.
+\end{abstract}

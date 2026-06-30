@@ -1,6 +1,12 @@
 \chapter{Introduction}
 \label{ch:introduction}
 
+This section introduces the thesis. It first motivates on-device sign
+language recognition as an accessibility problem, then states the
+recognition tasks the work addresses, fixes the scope and
+contributions of the study, and finally outlines the structure of the
+remaining sections.
+
 \section{Motivation}
 \label{sec:intro-motivation}
 
@@ -97,6 +103,15 @@ Within this scope the contributions of the thesis are the following.
         evaluated on the same ASL Alphabet split as the image-based
         recogniser so that the two letter-task pipelines can be
         compared directly.
+  \item A cross-dataset generalization analysis of the two letter
+        classifiers that exposes the capture-domain leakage inherent
+        in a random split of the single-source ASL Alphabet dataset.
+        Re-evaluated without retraining on an independent multi-signer
+        set, the image classifier's near-ceiling in-distribution
+        accuracy collapses while the landmark classifier largely
+        holds, turning a deceptive perfect score into a quantitative
+        measure of which pipeline actually generalizes
+        (Section~\ref{ch:test-results}).
   \item A landmark-based word-level recogniser, in which MediaPipe
         Hands landmarks are fed into a two-layer bidirectional LSTM,
         trained and evaluated on WLASL-100 under the dataset's
@@ -111,23 +126,23 @@ Within this scope the contributions of the thesis are the following.
         size, and on-device throughput side by side, and situates the
         resulting accuracy--footprint trade-off against published
         WLASL-100 baselines
-        (Chapter~\ref{ch:test-results}).
+        (Section~\ref{ch:test-results}).
 \end{enumerate}
 
 \section{Thesis Outline}
 \label{sec:intro-outline}
 
 The remainder of this document is organised as follows.
-Chapter~\ref{ch:related-work} surveys prior work on image-based,
+Section~\ref{ch:related-work} surveys prior work on image-based,
 landmark-based, and temporal sign recognition, and on the mobile
 deployment of such systems.
-Chapter~\ref{ch:analysis-design} formalises the recognition problem
+Section~\ref{ch:analysis-design} formalises the recognition problem
 and presents the high-level design of the proposed two-track
 pipeline.
-Chapter~\ref{ch:implementation} describes how the design is realised
+Section~\ref{ch:implementation} describes how the design is realised
 end-to-end, from data preparation through training to on-device
-export. Chapter~\ref{ch:test-results} reports the quantitative
+export. Section~\ref{ch:test-results} reports the quantitative
 evaluation, including the WLASL-100 baseline comparison and the
-on-device measurements. Chapter~\ref{ch:conclusion} summarises the
+on-device measurements. Section~\ref{ch:conclusion} summarises the
 findings, discusses the limitations of the current system, and
 outlines directions for future work.

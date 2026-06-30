@@ -1,61 +1,34 @@
-\chapter*{\"Ozet}
-\addcontentsline{toc}{chapter}{\"Ozet}
-
-\begin{spacing}{1.4}
-Bu tez, tamam{\i}yla bir Android telefon \"uzerinde
-\c{c}al{\i}\c{s}an u\c{c}tan uca bir Amerikan \.I\c{s}aret Dili
-(ASL) tan{\i}ma sistemi sunmaktad{\i}r. Sistem, birbirini
-tamamlayan iki tan{\i}ma g\"orevini ele al{\i}r: ASL Alphabet veri
-k\"umesinin 29 s{\i}n{\i}f{\i} \"uzerinde harf d\"uzeyinde parmak
-alfabesi tan{\i}ma ve WLASL-100 veri k\"umesinin 100 kelimelik
-s\"ozda\u{g}arc{\i}\u{g}{\i} \"uzerinde kelime d\"uzeyinde tan{\i}ma.
-Harf g\"orevi i\c{c}in iki s{\i}n{\i}fland{\i}r{\i}c{\i}
-e\u{g}itilip kar\c{s}{\i}la\c{s}t{\i}r{\i}lm{\i}\c{s}t{\i}r: ham
-g\"or\"unt\"uleri i\c{s}leyen bir EfficientNet-B0 ve MediaPipe
-Hands taraf{\i}ndan \c{c}{\i}kar{\i}lan 21 el i\c{s}aret noktas{\i}
-\"uzerinde \c{c}al{\i}\c{s}an kompakt bir \c{c}ok katmanl{\i}
-alg{\i}lay{\i}c{\i} (MLP). Tek imzalay{\i}c{\i}l{\i} ASL Alphabet
-test b\"ol\"um\"unde s{\i}ras{\i}yla \%100 ve \%99{,}38 Top-1
-de\u{g}erlerine ula\c{s}m{\i}\c{s}lard{\i}r; bu \c{c}evrim
-d{\i}\c{s}{\i} say{\i}lar bir yetenek iddias{\i} de\u{g}il,
-e\u{g}itim hatt{\i}n{\i}n sanity-check'i olarak okunmal{\i}d{\i}r;
-landmark model 0{,}24 MB'l{\i}k bir \c{c}ekirdekte
-ta\c{s}{\i}n{\i}r. Ger\c{c}ek kamera ko\c{s}ullar{\i}nda
-y\"ur\"ut\"ulen tek kullan{\i}c{\i}l{\i} cihaz \"uzeri elle
-de\u{g}erlendirme b\"ut\c{c}e telefonda \c{c}evrim d{\i}\c{s}{\i}
-s{\i}ralamay{\i} tersine \c{c}evirmi\c{s} (landmark MLP \%100,
-g\"or\"unt\"u a\u{g} \%92{,}9) ve harf g\"orevinde landmark
-t\"urevini da\u{g}{\i}t{\i}m varsay{\i}lan{\i} olarak
-desteklemi\c{s}tir. Kelime g\"orevi i\c{c}in, halka a\c{c}{\i}k
-Kaggle paketinden elde edilen \num{1013} videoluk taban
-{\"u}zerine yt-dlp tabanl{\i} bir kurtarma hatt{\i}yla 448 bozuk
-ba\u{g}lant{\i}l{\i} video kurtar{\i}l{\i}p \num{1465} kliplik bir
-WLASL-100 derlemi olu\c{s}turulmu\c{s} (\%44 art{\i}\c{s}), iki
-elden \c{c}{\i}kar{\i}lan 128 boyutlu i\c{s}aret noktas{\i} dizisi
-\"uzerinde \c{c}ift y\"onl\"u bir LSTM e\u{g}itilmi\c{s}tir.
-Be\c{s} seed'li logit ortalamal{\i} ensemble, veri k\"umesinin
-kanonik person-mixed b\"ol\"umlemesi alt{\i}nda WLASL-100 test
-b\"ol\"um\"unde \%56{,}22 Top-1 ve \%81{,}09 Top-5'e
-ula\c{s}m{\i}\c{s} ve tezin benimsedi\u{g}i \%40 Top-1 kabul
-e\c{s}i\u{g}ini 16 puan a\c{s}m{\i}\c{s}t{\i}r. WLASL
-b\"ol\"umlemesi person-mixed oldu\u{g}undan bu say{\i}
-literat\"ur ile k{\i}yaslanabilir bir benchmark de\u{g}eridir;
-signer-ba\u{g}{\i}ms{\i}z bir genelleme tahmini de\u{g}ildir.
-Dokuz ad{\i}ml{\i} ileriye d\"on\"uk (forward-additive) bir
-ablasyon, \%20 taban{\i}ndan \%60{,}08'lik son do\u{g}rulama
-do\u{g}rulu\u{g}una kadar olan kazan{\i}m{\i} a\u{g}{\i}rl{\i}\u{g}{\i}
-kar\c{s}{\i}la\c{s}t{\i}r{\i}labilir \"u\c{c} s\"utuna
-ay{\i}rmaktad{\i}r: veri m\"uhendisli\u{g}i, \c{c}{\i}kar{\i}m
-hatt{\i} ve e\u{g}itim rejimi rafinmanlar{\i}. D\"ort
-s{\i}n{\i}fland{\i}r{\i}c{\i}n{\i}n tamam{\i} TensorFlow Lite'a
-aktar{\i}lm{\i}\c{s} ve CameraX + MediaPipe Hands tabanl{\i} bir
-Android uygulamas{\i}nda da\u{g}{\i}t{\i}lm{\i}\c{s}t{\i}r.
-B\"ut\c{c}e (TECNO SPARK 20C) ve amiral gemisi (Xiaomi 15T Pro)
-\"uzerinde FPS, gecikme ve OOD do\u{g}ruluk fark{\i}
-\"ol\c{c}\"ulm\"u\c{s}t\"ur; ensemble gecikmesi giri\c{s} seviyesi
-cihazda kabul edilemeyecek kadar y\"uksek oldu\u{g}undan kelime
-do\u{g}rulu\u{g}u yaln{\i}zca amiral gemisi cihazda
-raporlanm{\i}\c{s}t{\i}r. De\u{g}erlendirme, mobil da\u{g}{\i}t{\i}m
-i\c{c}in cihaza ba\u{g}l{\i} bir model se\c{c}im rehberi ortaya
-koymu\c{s}tur.
-\end{spacing}
+\begin{ozet}
+Bu tez, bir Android telefon üzerinde çalışan uçtan uca bir
+Amerikan İşaret Dili (ASL) tanıma sistemi sunar ve iki görevi ele
+alır: ASL Alphabet veri kümesinin 29 sınıfı üzerinde harf düzeyinde
+parmak alfabesi tanıma ve WLASL-100 veri kümesinin 100 kelimelik
+sözdağarcığı üzerinde kelime düzeyinde tanıma. Harf görevi için iki
+sınıflandırıcı karşılaştırılır: ham görüntüleri işleyen bir
+EfficientNet-B0 ve MediaPipe Hands tarafından çıkarılan 21 el işaret
+noktası üzerinde çalışan kompakt bir çok katmanlı algılayıcı (MLP).
+Tek imzalayıcılı ASL Alphabet test bölümünde sırasıyla \%100 ve
+\%99,38 Top-1 değerlerine ulaşırlar; bu sayılar bir yetenek iddiası
+değil, eğitim hattının sağlık kontrolüdür; landmark model 0,24
+MB'tir. Yeniden eğitilmeden, farklı imzalayıcı ve arka planlardan
+oluşan bağımsız \num{870} görüntülük bir dış kümede görüntü ağının
+doğruluğu \%59,77'ye çökerken landmark MLP tespit edilen ellerde
+\%90,72'yi korur; bu, görüntü modelinin çekim-ortamı ezberini,
+landmark modelinin ortamdan bağımsızlığını ortaya koyar. Cihaz üzeri
+değerlendirme de bütçe telefonda bu sıralamayı tersine çevirir ve harf
+görevinde landmark türevini varsayılan yapar.
+Kelime görevi için, Kaggle paketindeki \num{1013} video yt-dlp ile
+\num{1465} klibe çıkarılmış (\%44 artış) ve iki elden çıkarılan 128
+boyutlu işaret noktası dizisi üzerinde çift yönlü bir LSTM
+eğitilmiştir. Beş seed'li logit ortalamalı ensemble, person-mixed
+bölümlemede \%56,22 Top-1 ve \%81,09 Top-5'e ulaşır ve tezin
+benimsediği \%40 eşiğini 16 puan aşar; person-mixed olduğundan bu,
+signer-bağımsız değil, literatürle kıyaslanabilir bir değerdir. Dokuz
+adımlı bir ablasyon, \%20 tabanından \%60,08 doğrulamaya çıkan
+kazanımı ağırlığı benzer üç katkıya ayırır: veri mühendisliği, çıkarım
+hattı ve eğitim rejimi. Dört sınıflandırıcı TensorFlow Lite'a
+aktarılıp CameraX ve MediaPipe Hands tabanlı bir Android
+uygulamasında dağıtılmış; FPS, gecikme ve OOD farkı bütçe
+(TECNO SPARK 20C) ve amiral gemisi (Xiaomi 15T Pro) cihazlarda
+ölçülerek cihaza bağlı bir model seçim rehberi sunulmuştur.
+\end{ozet}

@@ -1,0 +1,367 @@
+{
+  "test_dir": "data\\asl-alphabet\\asl_alphabet_test\\asl_alphabet_test",
+  "num_images": 28,
+  "efficientnet": {
+    "independent_test_accuracy": 100.0,
+    "per_image": [
+      {
+        "true": "A",
+        "pred": "A",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "B",
+        "pred": "B",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "C",
+        "pred": "C",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "D",
+        "pred": "D",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "E",
+        "pred": "E",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "F",
+        "pred": "F",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "G",
+        "pred": "G",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "H",
+        "pred": "H",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "I",
+        "pred": "I",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "J",
+        "pred": "J",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "K",
+        "pred": "K",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "L",
+        "pred": "L",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "M",
+        "pred": "M",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "N",
+        "pred": "N",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "nothing",
+        "pred": "nothing",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "O",
+        "pred": "O",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "P",
+        "pred": "P",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "Q",
+        "pred": "Q",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "R",
+        "pred": "R",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "S",
+        "pred": "S",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "space",
+        "pred": "space",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "T",
+        "pred": "T",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "U",
+        "pred": "U",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "V",
+        "pred": "V",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "W",
+        "pred": "W",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "X",
+        "pred": "X",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "Y",
+        "pred": "Y",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "Z",
+        "pred": "Z",
+        "confidence": 100.0,
+        "correct": true
+      }
+    ]
+  },
+  "mlp": {
+    "independent_test_accuracy_all": 53.57,
+    "independent_test_accuracy_detected": 100.0,
+    "no_hand_detected": [
+      "A",
+      "C",
+      "D",
+      "E",
+      "H",
+      "M",
+      "N",
+      "nothing",
+      "R",
+      "U",
+      "V",
+      "X",
+      "Z"
+    ],
+    "per_image": [
+      {
+        "true": "A",
+        "pred": "(el yok)",
+        "confidence": null,
+        "correct": false
+      },
+      {
+        "true": "B",
+        "pred": "B",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "C",
+        "pred": "(el yok)",
+        "confidence": null,
+        "correct": false
+      },
+      {
+        "true": "D",
+        "pred": "(el yok)",
+        "confidence": null,
+        "correct": false
+      },
+      {
+        "true": "E",
+        "pred": "(el yok)",
+        "confidence": null,
+        "correct": false
+      },
+      {
+        "true": "F",
+        "pred": "F",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "G",
+        "pred": "G",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "H",
+        "pred": "(el yok)",
+        "confidence": null,
+        "correct": false
+      },
+      {
+        "true": "I",
+        "pred": "I",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "J",
+        "pred": "J",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "K",
+        "pred": "K",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "L",
+        "pred": "L",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "M",
+        "pred": "(el yok)",
+        "confidence": null,
+        "correct": false
+      },
+      {
+        "true": "N",
+        "pred": "(el yok)",
+        "confidence": null,
+        "correct": false
+      },
+      {
+        "true": "nothing",
+        "pred": "(el yok)",
+        "confidence": null,
+        "correct": false
+      },
+      {
+        "true": "O",
+        "pred": "O",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "P",
+        "pred": "P",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "Q",
+        "pred": "Q",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "R",
+        "pred": "(el yok)",
+        "confidence": null,
+        "correct": false
+      },
+      {
+        "true": "S",
+        "pred": "S",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "space",
+        "pred": "space",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "T",
+        "pred": "T",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "U",
+        "pred": "(el yok)",
+        "confidence": null,
+        "correct": false
+      },
+      {
+        "true": "V",
+        "pred": "(el yok)",
+        "confidence": null,
+        "correct": false
+      },
+      {
+        "true": "W",
+        "pred": "W",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "X",
+        "pred": "(el yok)",
+        "confidence": null,
+        "correct": false
+      },
+      {
+        "true": "Y",
+        "pred": "Y",
+        "confidence": 100.0,
+        "correct": true
+      },
+      {
+        "true": "Z",
+        "pred": "(el yok)",
+        "confidence": null,
+        "correct": false
+      }
+    ]
+  },
+  "device": "cuda"
+}

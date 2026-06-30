@@ -1,6 +1,12 @@
 \chapter{Conclusion}
 \label{ch:conclusion}
 
+This section closes the thesis. It revisits the contributions in the
+order they were developed, restates the boundaries deliberately placed
+on the scope of the work, sets out the residual limitations of what
+was built, and points to the most promising directions for future
+work.
+
 \section{Summary of Contributions}
 \label{sec:conclusion-summary}
 
@@ -11,10 +17,10 @@ It reports the evaluation metrics specified in the project proposal
 and model footprint) and additionally clears the numeric acceptance
 bars adopted for this thesis as concrete pass/fail targets on top
 of those metrics. The contributions are summarised below in the
-order in which they are developed in the preceding chapters.
+order in which they are developed in the preceding sections.
 
 \paragraph{Two complementary letter classifiers.}
-Chapter~\ref{ch:implementation} described the design and training of
+Section~\ref{ch:implementation} described the design and training of
 two ASL fingerspelling classifiers that occupy opposite ends of the
 size and speed trade-off: an image-based EfficientNet-B0 and a
 landmark-based MLP that consumes the 63-dimensional MediaPipe Hands
@@ -27,7 +33,7 @@ fixed-distance, these offline figures are read in this thesis as a
 sanity check that the training pipeline converges and that the
 exported checkpoints preserve accuracy
 (Section~\ref{sec:results-letters}); the actual capability signal
-is sought in the on-device measurements that follow. The offline
+is sought in the cross-dataset and on-device measurements that follow. The offline
 numbers also provide the controlled benchmark against which the
 architectural comparison is made. Because the
 deployability of the system is the central objective of this
@@ -45,13 +51,23 @@ inverts, ships in a checkpoint roughly $65\times$ smaller, and
 runs at lower per-frame latency on the same device
 (Section~\ref{sec:results-on-device}). This is a converging
 verdict on three independent axes, not a marginal preference. The
-signer-disjoint generalisation of these classifiers, which the
-random split of the public dataset does not assess, is discussed as
-a limitation in Section~\ref{sec:conclusion-limitations}.
+same verdict is delivered, with stronger evidence, by the
+cross-dataset evaluation of
+Section~\ref{sec:results-letters-crossdataset}: re-evaluated without
+retraining on an independent \num{870}-image set from different
+signers and backgrounds, the image network's Top-1 collapses from
+\SI{100}{\percent} to \SI{59.77}{\percent} while the landmark MLP
+retains \SI{90.72}{\percent} on detected hands, isolating the image
+model's near-ceiling offline number as capture-domain memorization
+and the landmark abstraction as the component that actually
+generalizes. A strict within-dataset signer-disjoint split remains
+impossible on the public ASL Alphabet release, which does not expose
+signer identity; that residual gap is discussed in
+Section~\ref{sec:conclusion-limitations}.
 
 \paragraph{A word classifier that clears the adopted acceptance bar
 with a hands-only feature set.}
-Chapter~\ref{ch:implementation} described a five-seed bidirectional
+Section~\ref{ch:implementation} described a five-seed bidirectional
 LSTM trained on a two-handed 128-dimensional landmark feature stream.
 The word classifier clears the adopted hard acceptance bar. The
 five-seed logit-averaging ensemble reaches \SI{56.22}{\percent}
@@ -89,7 +105,7 @@ Table~\ref{tab:results-ablation}, in which each modification was
 isolated by retraining three independently seeded models on the same
 WLASL-100 split. The 40-point gain decomposes cleanly into three
 contributions of comparable scientific weight. \emph{Data engineering}
-contributes +16.08 validation points: the yt-dlp-based recovery of 448
+contributes +16.08 validation points: the yt-dlp-based recovery of 452
 link-rotted videos (\num{1013}\,$\to$\,\num{1465}) is the largest single
 step in the entire table and surfaces dataset-size sensitivity as the
 dominant lever on this WLASL-100 setup. The recovery itself is
@@ -108,8 +124,11 @@ add the remaining ${\sim}14$ points. The ablation also surfaces a
 methodological detail worth reporting: the wider hidden state is mildly
 negative in isolation ($-1.24$ points) but contributes a $+4.39$-point
 \emph{interaction effect} once the full regularization stack is in
-place (Section~\ref{sec:results-ablation-interaction}), and removing
-it from the full final configuration costs $-6.47$ test points; its
+place, and removing it from the full final configuration costs
+$-6.47$ test points (both interaction magnitudes come from a single
+retraining of the full recipe rather than the three-seed protocol and
+should be read with that caveat;
+Section~\ref{sec:results-ablation-interaction}); its
 inclusion in the deployed model is therefore justified by joint
 adoption rather than by a capacity argument alone. The five-seed ensemble reaches
 \SI{60.08}{\percent} on the validation set and \SI{56.22}{\percent} on
@@ -122,7 +141,7 @@ landmark-based sequence classification problems on small datasets.
 
 \paragraph{An on-device Android application that exposes all four
 classifiers.}
-Chapter~\ref{ch:implementation} described a CameraX-driven Android
+Section~\ref{ch:implementation} described a CameraX-driven Android
 application that runs the four classifiers through TensorFlow Lite
 with the XNNPACK CPU delegate, displays a Top-3 prediction panel and
 a self-reported FPS/latency badge, and recovers from MediaPipe's
@@ -168,7 +187,7 @@ deployability claim that motivates the thesis; it is not, on its own,
 a controlled measurement of classifier accuracy under deployment
 conditions.
 
-\section{What Was Not Done}
+\section{Delimitations}
 \label{sec:conclusion-not-done}
 
 A clear statement of what falls outside the scope of the present
@@ -176,8 +195,8 @@ work is as important as a statement of what was achieved, both for
 honest reporting and because the senior-project guidelines require
 it. The boundaries listed here are deliberate; each was fixed at
 the proposal stage in
-Chapter~\ref{ch:introduction} and observed throughout the
-implementation and evaluation chapters.
+Section~\ref{ch:introduction} and observed throughout the
+implementation and evaluation sections.
 
 \begin{itemize}
   \item \textbf{Larger WLASL subsets were not evaluated.}
@@ -284,7 +303,14 @@ implication is the same: under conditions where MediaPipe fails
 lighting), the landmark pipelines simply do not produce a
 prediction. The image-based pipeline is the appropriate fallback
 on such frames; the system does not currently switch between the
-two automatically.
+two automatically. This floor is, however, partly dataset-dependent:
+on the higher-resolution external set of
+Section~\ref{sec:results-letters-crossdataset} MediaPipe recovered a
+hand on \SI{93.69}{\percent} of the hand-bearing images, well above
+the \SI{73.09}{\percent} in-distribution recovery rate, so the
+\SI{26.91}{\percent} floor reported here is in part an artefact of the
+\(200\times200\) ASL Alphabet crops rather than an intrinsic limit of
+the landmark pipeline.
 
 \paragraph{WLASL-100 person-mixed split and the unmeasured
 generalization band.}
@@ -302,7 +328,7 @@ mixed split should not be assumed to reach the same number on
 data from a signer that the training set has never seen.
 
 Two things were therefore measured cleanly by the word-task
-evaluation of Chapter~\ref{ch:test-results}, and one was not.
+evaluation of Section~\ref{ch:test-results}, and one was not.
 What \emph{was} measured cleanly is, first, a
 protocol-comparable benchmark point against published WLASL-100
 methods on the canonical person-mixed split
@@ -399,6 +425,31 @@ accuracy gap is itself device-conditioned, and a deployment that
 guarantees image-network accuracy across the budget tier would
 require either a camera-aware retraining set or a runtime fallback
 to the landmark variant.
+
+\paragraph{Cross-dataset generalization gap of the letter
+classifiers.}
+The cross-dataset evaluation of
+Section~\ref{sec:results-letters-crossdataset} converts the
+in-distribution caveat on the \SI{100}{\percent} and
+\SI{99.38}{\percent} letter accuracies into a measured quantity. On
+an independent \num{870}-image set from different signers and
+backgrounds, evaluated without retraining, EfficientNet-B0 drops from
+\SI{100}{\percent} to \SI{59.77}{\percent} Top-1 while the landmark
+MLP drops only from \SI{99.38}{\percent} to \SI{90.72}{\percent} on
+its detected population. The image network's near-ceiling offline
+figure is therefore in large part capture-domain memorization, and
+the landmark abstraction is the more robust of the two under domain
+shift --- the central evidence for preferring the landmark variant on
+the letter task. Two limitations bound this result. The landmark MLP
+is itself not domain-invariant: it loses nearly nine Top-1 points and
+stays gated on a hand detector that can fail under adverse capture.
+And an external dataset varies signer, background and camera
+\emph{jointly}; it is a proxy for, not an isolation of,
+signer-disjoint generalization. The ASL Alphabet dataset does not
+publish signer identity, so a strict signer-disjoint letter
+evaluation --- the analogue of the WLASL person-mixed limitation
+above --- remains out of reach on this dataset and is left to a
+future multi-source re-evaluation.
 
 \paragraph{Single-user OOD ceiling on the manual evaluation.}
 The manual evaluation of Section~\ref{sec:results-qualitative} was
